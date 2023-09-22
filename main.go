@@ -2,31 +2,28 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
+
+	"github.com/Sync-Space-49/syncspace-server/internal/config"
+
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	err := godotenv.Load(".env")
+	if err := run(); err != nil {
+		log.Err(err).Msg("failed to run server")
+	}
+}
+
+func run() error {
+	cfg, err := config.Get()
 	if err != nil {
-		fmt.Println("Failed to load .env file:", err)
-		return
+		return err
 	}
 
-	// dbUser := os.Getenv("DBUSER")
-	// dbPass := os.Getenv("DBPASS")
-	// dbName := os.Getenv("DBNAME")
-	// db, err := sqlx.Connect("postgres", fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", dbUser, dbPass, dbName))
-	// if err != nil {
-	// 	fmt.Println("Failed to connect to database:", err)
-	// 	return
-	// }
+	// db, err := db.New(cfg.DB.DBUser, cfg.DB.DBPass, cfg.DB.DBURI, cfg.DB.DBName)
 
 	mainRouter := mux.NewRouter()
 	// test route
@@ -36,6 +33,6 @@ func main() {
 		json.NewEncoder(writer).Encode(map[string]string{"message": "Hello World!"})
 	})
 
-	port := os.Getenv("PORT")
-	log.Fatal(http.ListenAndServe(port, mainRouter))
+	http.ListenAndServe(cfg.APIHost, mainRouter)
+	return nil
 }
