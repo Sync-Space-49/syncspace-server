@@ -7,7 +7,7 @@ import (
 
 	"github.com/Sync-Space-49/syncspace-server/config"
 	"github.com/Sync-Space-49/syncspace-server/db"
-	"github.com/Sync-Space-49/syncspace-server/handlers"
+	"github.com/Sync-Space-49/syncspace-server/routers"
 
 	"github.com/rs/zerolog/log"
 )
@@ -28,7 +28,7 @@ func run() error {
 
 	server := &http.Server{
 		Addr:    cfg.APIHost,
-		Handler: handlers.NewAPI(cfg, db),
+		Handler: routers.NewAPI(cfg, db),
 	}
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed while running server: %w", err)

@@ -1,4 +1,4 @@
-package handlers
+package routers
 
 import (
 	"github.com/gorilla/mux"
@@ -7,8 +7,8 @@ import (
 	"github.com/Sync-Space-49/syncspace-server/db"
 )
 
-func registerUserRoutes(cfg *config.Config, db *db.DB) *mux.Router {
-	handler := mux.NewRouter()
+func registerOrganizationRoutes(cfg *config.Config, db *db.DB) *mux.Router {
+	router := mux.NewRouter()
 
-	return handler
+	return router
 }
