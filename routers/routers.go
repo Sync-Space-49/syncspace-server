@@ -11,15 +11,16 @@ import (
 )
 
 var (
-	usersPrefix  = "api/users"
-	orgsPrefix   = "api/organizations"
-	boardsPrefix = "api/boards"
+	usersPrefix         = "api/users"
+	organizationsPrefix = "api/organizations"
+	boardsPrefix        = "api/organization/:organizationId/boards"
+	// Probably add variables for prevelege ID's here
 )
 
 func NewAPI(cfg *config.Config, db *db.DB) *mux.Router {
 	router := mux.NewRouter()
 	router.PathPrefix(usersPrefix).Handler(registerUserRoutes(cfg, db))
-	router.PathPrefix(orgsPrefix).Handler(registerOrganizationRoutes(cfg, db))
+	router.PathPrefix(organizationsPrefix).Handler(registerOrganizationRoutes(cfg, db))
 	router.PathPrefix(boardsPrefix).Handler(registerBoardRoutes(cfg, db))
 
 	// send hello world as json in temp route

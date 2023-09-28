@@ -53,7 +53,7 @@ func (handler *userHandler) GetUser(writer http.ResponseWriter, request *http.Re
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusCreated)
+	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(user)
 }
 
@@ -140,6 +140,11 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 	// TODO: verify this is signed in user (possilby with middleware)
 	// Need some logic checking what here the user is updating
 	params := mux.Vars(request)
+	userId, err := strconv.Atoi(params["userId"])
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Invalid User ID: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
 	email := params["email"]
 	username := params["username"]
 	password := params["password"]
@@ -149,6 +154,12 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 }
 
 func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	userId, err := strconv.Atoi(params["userId"])
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Invalid User ID: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
 	// TODO: verify this is signed in user (possilby with middleware)
 	// TODO: Delete user from database
 	// TODO: send back 204
