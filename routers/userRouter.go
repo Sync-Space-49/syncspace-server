@@ -3,13 +3,14 @@ package routers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 
+	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/config"
 	"github.com/Sync-Space-49/syncspace-server/controllers/user"
 	"github.com/Sync-Space-49/syncspace-server/db"
-	"github.com/Sync-Space-49/syncspace-server/middleware/auth"
 )
 
 type userHandler struct {
@@ -89,7 +90,8 @@ func (handler *userHandler) SignUpUser(writer http.ResponseWriter, request *http
 	// }
 	// TODO: Add pfp to bucket
 
-	err := handler.controller.CreateUser(username, email, password, nil)
+	ctx := request.Context()
+	err := handler.controller.CreateUser(ctx, username, email, password, nil)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create user: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -113,7 +115,6 @@ func (handler *userHandler) SignInUser(writer http.ResponseWriter, request *http
 		http.Error(writer, fmt.Sprintf("Failed to get user: %s", err.Error()), http.StatusUnauthorized)
 		return
 	}
-	fmt.Printf("Is User nil: %t\n", user == nil)
 
 	token, err := auth.CreateLoginToken(*user)
 	if err != nil {
@@ -129,18 +130,60 @@ func (handler *userHandler) SignInUser(writer http.ResponseWriter, request *http
 func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http.Request) {
 	// TODO: verify this is signed in user (possilby with middleware)
 	// Need some logic checking what here the user is updating
-	// params := mux.Vars(request)
-	// userId, err := strconv.Atoi(params["userId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid User ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// email := params["email"]
-	// username := params["username"]
-	// password := params["password"]
+	params := mux.Vars(request)
+	userId, err := strconv.Atoi(params["userId"])
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Invalid User ID: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
+	email := request.FormValue("email")
+	username := request.FormValue("username")
+	password := request.FormValue("password")
 	// TODO: see if user is updating profile picture (possilby handle this in abstracted function)
-	// TODO: update user in database
-	// TODO: send back 204
+	var pfpUrl *string = nil
+
+	token := request.Header.Get("Authorization")
+	if token == "" {
+		http.Error(writer, "Missing Authorization Header", http.StatusUnauthorized)
+		return
+	}
+	claims, err := auth.AuthenticateLoginToken(token)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to Authenticate Token: %s", err.Error()), http.StatusUnauthorized)
+		return
+	}
+	if claims.Id != userId {
+		http.Error(writer, "Unauthorized to Update This User", http.StatusUnauthorized)
+	}
+
+	ctx := request.Context()
+	toUpdateUser, err := handler.controller.GetUserById(ctx, userId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to Find User: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if email == "" {
+		email = toUpdateUser.Email
+	}
+	if username == "" {
+		username = toUpdateUser.Username
+	}
+	if password == "" {
+		password = toUpdateUser.HashedPassword
+	} else {
+		password, err = handler.controller.HashPassword(password)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to Hash Password: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+	}
+	err = handler.controller.UpdateUser(ctx, userId, email, username, password, pfpUrl)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to Update User: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http.Request) {

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/config"
@@ -29,15 +28,18 @@ func CreateLoginToken(user user.User) (*string, error) {
 	return &signedString, err
 }
 
-func AuthenticateLoginToken(writer http.ResponseWriter, request *http.Request, accessToken string) *UserClaims {
+func AuthenticateLoginToken(accessToken string) (*UserClaims, error) {
 	cfg, err := config.Get()
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get config: %s", err.Error()), http.StatusBadRequest)
-		return nil
+		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
-	parsedAccessToken, _ := jwt.ParseWithClaims(accessToken, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+	parsedAccessToken, err := jwt.ParseWithClaims(accessToken, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(cfg.JWTSecret), nil
 	})
 
-	return parsedAccessToken.Claims.(*UserClaims)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse access token: %w", err)
+	}
+
+	return parsedAccessToken.Claims.(*UserClaims), nil
 }
