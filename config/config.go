@@ -15,10 +15,10 @@ const (
 )
 
 type Config struct {
-	Environment    ENV    `default:"local" envconfig:"APP_ENV"`
-	APIHost        string `default:"127.0.0.1:8080" envconfig:"API_HOST"`
-	AdminJWTSecret string `default:"bruh" envconfig:"ADMIN_JWT_SECRET"`
-	DB             struct {
+	Environment ENV    `default:"local" envconfig:"APP_ENV"`
+	APIHost     string `default:"127.0.0.1:8080" envconfig:"API_HOST"`
+	JWTSecret   string `default:"bruh" envconfig:"JWT_SECRET"`
+	DB          struct {
 		DBUser string `default:"postgres" envconfig:"DB_USER"`
 		DBPass string `default:"postgres" envconfig:"DB_PASS"`
 		DBURI  string `default:"localhost:5432" envconfig:"DB_URI"`

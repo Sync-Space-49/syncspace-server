@@ -1,18 +1,13 @@
 package routers
 
 import (
-	// "encoding/json"
 	"fmt"
-	// "io"
 	"net/http"
-	// "os"
-	// "path/filepath"
-	// "strconv"
-	// "time"
+	"strconv"
 
 	"github.com/gorilla/mux"
-	// "golang.org/x/crypto/bcrypt"
 
+	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/config"
 	"github.com/Sync-Space-49/syncspace-server/controllers/user"
 	"github.com/Sync-Space-49/syncspace-server/db"
@@ -58,27 +53,20 @@ func (handler *userHandler) GetUser(writer http.ResponseWriter, request *http.Re
 }
 
 func (handler *userHandler) SignUpUser(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// username := params["username"]
-	// email := params["email"]
-	// password := params["password"]
-	// if email == "" || password == "" || username == "" {
-	// 	http.Error(writer, "Invalid email or password", http.StatusBadRequest)
-	// 	return
-	// }
+	username := request.FormValue("username")
+	email := request.FormValue("email")
+	password := request.FormValue("password")
+	if email == "" || password == "" || username == "" {
+		http.Error(writer, "Missing email, username, or password", http.StatusBadRequest)
+		return
+	}
 
-	// hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	// if err != nil {
-	// 	http.Error(writer, "Failed to hash password", http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// err = request.ParseMultipartForm(10 << 20) // 10 MB limit on pfp size
+	// err := request.ParseMultipartForm(10 << 20) // 10 MB limit on pfp size
 	// if err != nil {
 	// 	http.Error(writer, "Unable to parse form (is image too large?)", http.StatusBadRequest)
 	// 	return
 	// }
-	// TODO: abstract this into function to be used in other places
+	// // TODO: abstract this into function to be used in other places
 	// file, header, err := request.FormFile("profile_picture")
 	// if err != nil {
 	// 	http.Error(writer, "Unable to retrieve profile picture", http.StatusBadRequest)
@@ -100,57 +88,102 @@ func (handler *userHandler) SignUpUser(writer http.ResponseWriter, request *http
 	// 	http.Error(writer, "Unable to copy file", http.StatusInternalServerError)
 	// 	return
 	// }
-
 	// TODO: Add pfp to bucket
-	// TODO: Add user to database
+
+	ctx := request.Context()
+	err := handler.controller.CreateUser(ctx, username, email, password, nil)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create user: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
 	// TODO: Add user to their organization
-	// writer.Header().Set("Content-Type", "application/json")
-	// writer.WriteHeader(http.StatusCreated)
-	// json.NewEncoder(writer).Encode(user)
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
 }
 
 func (handler *userHandler) SignInUser(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// credential := params["credential"]
-	// password := params["password"]
-	// if credential == "" || password == "" {
-	// 	http.Error(writer, "Invalid email or password", http.StatusBadRequest)
-	// 	return
-	// }
+	ctx := request.Context()
+	credential := request.FormValue("credential")
+	password := request.FormValue("password")
+	if credential == "" || password == "" {
+		http.Error(writer, "Invalid username, email or password", http.StatusBadRequest)
+		return
+	}
 
-	// TODO: GetUserByCredentials (email or username)
-	// Send specific error if user not found/error fr thrown
-	// user, err := handler.controller.GetUserByCredentials(credential)
-	// if err != nil {
-	// 	http.Error(writer, "Failed to get user", http.StatusInternalServerError)
-	// 	return
-	// }
+	user, err := handler.controller.GetUserByCredentials(ctx, credential, password)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user: %s", err.Error()), http.StatusUnauthorized)
+		return
+	}
 
-	// err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	// if err != nil {
-	// 	http.Error(writer, "Incorrect password", http.StatusUnauthorized)
-	// 	return
-	// }
+	token, err := auth.CreateLoginToken(*user)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create token: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
 
-	// writer.Header().Set("Content-Type", "application/json")
-	// json.NewEncoder(writer).Encode(user)
+	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set("Authorization", fmt.Sprintf("Bearer %s", *token))
+	writer.WriteHeader(http.StatusOK)
 }
 
 func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http.Request) {
 	// TODO: verify this is signed in user (possilby with middleware)
 	// Need some logic checking what here the user is updating
-	// params := mux.Vars(request)
-	// userId, err := strconv.Atoi(params["userId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid User ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// email := params["email"]
-	// username := params["username"]
-	// password := params["password"]
+	params := mux.Vars(request)
+	userId, err := strconv.Atoi(params["userId"])
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Invalid User ID: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
+	email := request.FormValue("email")
+	username := request.FormValue("username")
+	password := request.FormValue("password")
 	// TODO: see if user is updating profile picture (possilby handle this in abstracted function)
-	// TODO: update user in database
-	// TODO: send back 204
+	var pfpUrl *string = nil
+
+	token := request.Header.Get("Authorization")
+	if token == "" {
+		http.Error(writer, "Missing Authorization Header", http.StatusUnauthorized)
+		return
+	}
+	claims, err := auth.AuthenticateLoginToken(token)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to Authenticate Token: %s", err.Error()), http.StatusUnauthorized)
+		return
+	}
+	if claims.Id != userId {
+		http.Error(writer, "Unauthorized to Update This User", http.StatusUnauthorized)
+	}
+
+	ctx := request.Context()
+	toUpdateUser, err := handler.controller.GetUserById(ctx, userId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to Find User: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if email == "" {
+		email = toUpdateUser.Email
+	}
+	if username == "" {
+		username = toUpdateUser.Username
+	}
+	if password == "" {
+		password = toUpdateUser.HashedPassword
+	} else {
+		password, err = handler.controller.HashPassword(password)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to Hash Password: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+	}
+	err = handler.controller.UpdateUser(ctx, userId, email, username, password, pfpUrl)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to Update User: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http.Request) {
