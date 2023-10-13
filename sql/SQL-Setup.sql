@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS Cards (
     title           VARCHAR(255) NOT NULL,
     description     TEXT,
     position        SMALLINT, -- changed from int to smallint (will not have more than 32767 lists/cards/etc)
-    panel_id         SERIAL, FOREIGN KEY (panel_id) REFERENCES Panels(id)
+    stack_id         SERIAL, FOREIGN KEY (stack_id) REFERENCES Stacks(id)
 );
 
 CREATE TABLE IF NOT EXISTS Assigned_Cards (
