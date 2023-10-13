@@ -37,11 +37,18 @@ CREATE TABLE IF NOT EXISTS Boards (
     organization_id SERIAL, FOREIGN KEY (organization_id) REFERENCES Organizations(id)
 );
 
-CREATE TABLE IF NOT EXISTS Lists (
+CREATE TABLE IF NOT EXISTS Panels ( -- Changed to Panels from Lists
     id              SERIAL PRIMARY KEY,
     title           VARCHAR(255) NOT NULL,
     position        SMALLINT, -- changed from int to smallint (will not have more than 32767 lists/cards/etc)
     board_id        SERIAL, FOREIGN KEY (board_id) REFERENCES Boards(id)
+);
+
+CREATE TABLE IF NOT EXISTS Stacks (
+    id              SERIAL PRIMARY KEY,
+    title           VARCHAR(255) NOT NULL,
+    position        SMALLINT, -- changed from int to smallint (will not have more than 32767 lists/cards/etc)
+    panel_id        SERIAL, FOREIGN KEY (panel_id) REFERENCES Panels(id)
 );
 
 CREATE TABLE IF NOT EXISTS Cards (
@@ -49,7 +56,7 @@ CREATE TABLE IF NOT EXISTS Cards (
     title           VARCHAR(255) NOT NULL,
     description     TEXT,
     position        SMALLINT, -- changed from int to smallint (will not have more than 32767 lists/cards/etc)
-    list_id         SERIAL, FOREIGN KEY (list_id) REFERENCES Lists(id)
+    panel_id         SERIAL, FOREIGN KEY (panel_id) REFERENCES Panels(id)
 );
 
 CREATE TABLE IF NOT EXISTS Assigned_Cards (
