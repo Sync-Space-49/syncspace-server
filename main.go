@@ -25,6 +25,9 @@ func run() error {
 	}
 
 	db, err := db.New(cfg.DB.DBUser, cfg.DB.DBPass, cfg.DB.DBURI, cfg.DB.DBName)
+	if err != nil {
+		return err
+	}
 
 	server := &http.Server{
 		Addr:    cfg.APIHost,
