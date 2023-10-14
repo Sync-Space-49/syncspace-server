@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	defaultExpiration        = 12 * time.Hour
-	purgeTime                = 24 * time.Hour
-	MangementTokenKey string = "managementToken"
+	defaultExpiration         = 12 * time.Hour
+	purgeTime                 = 24 * time.Hour
+	ManagementTokenKey string = "managementToken"
 )
 
 type tokenCache struct {

@@ -14,7 +14,7 @@ import (
 func GetManagementToken(cfg *config.Config) (string, error) {
 	var managementToken string
 	tokenCache := cache.Get()
-	token, err := tokenCache.Read(cache.MangementTokenKey)
+	token, err := tokenCache.Read(cache.ManagementTokenKey)
 	if err != nil {
 		return "", err
 	}
@@ -49,7 +49,7 @@ func GetManagementToken(cfg *config.Config) (string, error) {
 			return "", err
 		}
 
-		tokenCache.Update(cache.MangementTokenKey, tokenResponse.Token)
+		tokenCache.Update(cache.ManagementTokenKey, tokenResponse.Token)
 		managementToken = tokenResponse.Token
 	}
 	return managementToken, nil
