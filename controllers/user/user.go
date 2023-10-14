@@ -40,7 +40,7 @@ func (c *Controller) GetUserById(userId string) (*User, error) {
 	}
 	defer res.Body.Close()
 	body, _ := io.ReadAll(res.Body)
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return &User{}, fmt.Errorf("invalid request: %s", string(body))
 	}
 
@@ -81,7 +81,6 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 		payload = strings.NewReader(fmt.Sprintf(`{"username":"%s","picture":"%s"}`, username, pfpUrl))
 	}
 
-	client := &http.Client{}
 	req, err := http.NewRequest(method, url, payload)
 	if err != nil {
 		return err
@@ -89,7 +88,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
-	res, err := client.Do(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -99,7 +98,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 	if err != nil {
 		return err
 	}
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to update user: %s", string(body))
 	}
 
@@ -113,7 +112,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Accept", "application/json")
 		req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
-		res, err := client.Do(req)
+		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return err
 		}
@@ -123,9 +122,36 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 		if err != nil {
 			return err
 		}
-		if res.StatusCode != 200 {
+		if res.StatusCode != http.StatusOK {
 			return fmt.Errorf("failed to update user: %s", string(body))
 		}
+	}
+
+	return nil
+}
+
+func (c *Controller) DeleteUserById(userId string) error {
+	managementToken, err := auth.GetManagementToken(c.cfg)
+	if err != nil {
+		return err
+	}
+	method := "DELETE"
+	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
+	req, _ := http.NewRequest(method, url, nil)
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("failed to delete user: %s", string(body))
 	}
 
 	return nil

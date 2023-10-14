@@ -37,7 +37,7 @@ func GetManagementToken(cfg *config.Config) (string, error) {
 		defer res.Body.Close()
 
 		body, _ := io.ReadAll(res.Body)
-		if res.StatusCode != 200 {
+		if res.StatusCode != http.StatusOK {
 			return "", fmt.Errorf("failed to get maintenance token: %s", string(body))
 		}
 

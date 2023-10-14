@@ -90,6 +90,11 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 	// user currently cannot upload pfp
 	pfpUrl := ""
 
+	if userId == "" {
+		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		return
+	}
+
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenUserId := token.RegisteredClaims.Subject
 	if tokenUserId != userId {
@@ -108,13 +113,15 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 }
 
 func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// userId, err := strconv.Atoi(params["userId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid User ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify this is signed in user (possilby with middleware)
-	// TODO: Delete user from database
-	// TODO: send back 204
+	params := mux.Vars(request)
+	userId := params["userId"]
+	if userId == "" {
+		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		return
+	}
+	err := handler.controller.DeleteUserById(userId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to Delete User: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
 }
