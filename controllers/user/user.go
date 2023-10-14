@@ -24,8 +24,8 @@ func NewController(cfg *config.Config, db *db.DB) *Controller {
 	}
 }
 
-func (c *Controller) GetUserById(userId string, tokenString string) (*User, error) {
-	managementToken, err := auth.GetManagementToken(c.cfg, tokenString)
+func (c *Controller) GetUserById(userId string) (*User, error) {
+	managementToken, err := auth.GetManagementToken(c.cfg)
 	if err != nil {
 		return &User{}, err
 	}
@@ -49,12 +49,12 @@ func (c *Controller) GetUserById(userId string, tokenString string) (*User, erro
 	return &user, nil
 }
 
-func (c *Controller) UpdateUserById(tokenString string, userId string, email string, username string, password string, pfpUrl string) error {
-	managementToken, err := auth.GetManagementToken(c.cfg, tokenString)
+func (c *Controller) UpdateUserById(userId string, email string, username string, password string, pfpUrl string) error {
+	managementToken, err := auth.GetManagementToken(c.cfg)
 	if err != nil {
 		return fmt.Errorf("failed to get maintenance token: %w", err)
 	}
-	userInfo, err := c.GetUserById(userId, tokenString)
+	userInfo, err := c.GetUserById(userId)
 	if err != nil {
 		return fmt.Errorf("failed to get user info: %w", err)
 	}

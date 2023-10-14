@@ -10,7 +10,7 @@ import (
 	"github.com/Sync-Space-49/syncspace-server/config"
 )
 
-func GetManagementToken(cfg *config.Config, tokenString string) (string, error) {
+func GetManagementToken(cfg *config.Config) (string, error) {
 	url := fmt.Sprintf("%soauth/token", cfg.Auth0.Domain)
 
 	payload := strings.NewReader(fmt.Sprintf(`{"client_id":"%s","client_secret":"%s","audience":"%s","grant_type":"client_credentials"}`, cfg.Auth0.Server.ClientId, cfg.Auth0.Server.ClientSecret, cfg.Auth0.Management.Audience))
@@ -21,7 +21,6 @@ func GetManagementToken(cfg *config.Config, tokenString string) (string, error) 
 		return "", err
 	}
 
-	req.Header.Add("Authorization", tokenString)
 	req.Header.Add("content-type", "application/json")
 
 	res, err := http.DefaultClient.Do(req)

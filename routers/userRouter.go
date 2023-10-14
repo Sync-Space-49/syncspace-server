@@ -41,8 +41,7 @@ func (handler *userHandler) GetUser(writer http.ResponseWriter, request *http.Re
 		return
 	}
 
-	tokenString := request.Header.Get("Authorization")
-	user, err := handler.controller.GetUserById(userId, tokenString)
+	user, err := handler.controller.GetUserById(userId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -91,7 +90,6 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 	// user currently cannot upload pfp
 	pfpUrl := ""
 
-	tokenString := request.Header.Get("Authorization")
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenUserId := token.RegisteredClaims.Subject
 	if tokenUserId != userId {
@@ -99,7 +97,7 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 		return
 	}
 
-	err := handler.controller.UpdateUserById(tokenString, userId, email, username, password, pfpUrl)
+	err := handler.controller.UpdateUserById(userId, email, username, password, pfpUrl)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to Update User: %s", err.Error()), http.StatusInternalServerError)
 		return
