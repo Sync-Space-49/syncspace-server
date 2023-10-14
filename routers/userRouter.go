@@ -119,6 +119,12 @@ func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http
 		http.Error(writer, "No User ID Found", http.StatusBadRequest)
 		return
 	}
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenUserId := token.RegisteredClaims.Subject
+	if tokenUserId != userId {
+		http.Error(writer, "Unauthorized to Delete This User", http.StatusUnauthorized)
+		return
+	}
 	err := handler.controller.DeleteUserById(userId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to Delete User: %s", err.Error()), http.StatusInternalServerError)
