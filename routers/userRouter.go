@@ -130,4 +130,7 @@ func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http
 		http.Error(writer, fmt.Sprintf("Failed to Delete User: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
