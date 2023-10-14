@@ -11,7 +11,7 @@ import (
 	"github.com/Sync-Space-49/syncspace-server/db"
 )
 
-var (
+const (
 	usersPrefix         = "/api/users"
 	organizationsPrefix = "/api/organizations"
 	boardsPrefix        = "/api/organization/:organizationId/boards"

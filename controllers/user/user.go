@@ -29,9 +29,10 @@ func (c *Controller) GetUserById(userId string) (*User, error) {
 	if err != nil {
 		return &User{}, err
 	}
+	method := "GET"
 	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", managementToken))
+	req, _ := http.NewRequest(method, url, nil)
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -39,6 +40,9 @@ func (c *Controller) GetUserById(userId string) (*User, error) {
 	}
 	defer res.Body.Close()
 	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != 200 {
+		return &User{}, fmt.Errorf("invalid request: %s", string(body))
+	}
 
 	var user User
 	err = json.Unmarshal(body, &user)
@@ -54,15 +58,17 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 	if err != nil {
 		return fmt.Errorf("failed to get maintenance token: %w", err)
 	}
-	userInfo, err := c.GetUserById(userId)
+
+	user, err := c.GetUserById(userId)
 	if err != nil {
 		return fmt.Errorf("failed to get user info: %w", err)
 	}
+
 	if username == "" {
-		username = userInfo.Username
+		username = user.Username
 	}
 	if pfpUrl == "" {
-		pfpUrl = userInfo.Picture
+		pfpUrl = user.Picture
 	}
 
 	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
@@ -82,7 +88,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", managementToken))
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
 	res, err := client.Do(req)
 	if err != nil {
 		return err
@@ -97,6 +103,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 		return fmt.Errorf("failed to update user: %s", string(body))
 	}
 
+	// seperate request for email because Auth0 won't let you update email and username at the same time
 	if email != "" {
 		payload = strings.NewReader(fmt.Sprintf(`{"email":"%s"}`, email))
 		req, err := http.NewRequest(method, url, payload)
@@ -105,7 +112,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 		}
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Accept", "application/json")
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", managementToken))
+		req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
 		res, err := client.Do(req)
 		if err != nil {
 			return err

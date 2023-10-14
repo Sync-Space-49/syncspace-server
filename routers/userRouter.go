@@ -29,7 +29,6 @@ func registerUserRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUser))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateUser))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteUser))).Methods("DELETE")
-
 	return handler.router
 }
 
@@ -58,6 +57,7 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 	email := request.FormValue("email")
 	username := request.FormValue("username")
 	password := request.FormValue("password")
+
 	// TODO: see if user is updating profile picture (possilby handle this in abstracted function)
 	// err := request.ParseMultipartForm(10 << 20) // 10 MB limit on pfp size
 	// if err != nil {
@@ -102,6 +102,7 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 		http.Error(writer, fmt.Sprintf("Failed to Update User: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
 }

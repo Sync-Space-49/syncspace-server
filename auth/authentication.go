@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"runtime/debug"
 	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/config"
@@ -15,7 +14,7 @@ import (
 	"github.com/auth0/go-jwt-middleware/v2/validator"
 )
 
-// Validate does nothing for this example, but we need
+// Validate does nothing now, but we need
 // it to satisfy validator.CustomClaims interface.
 func (c CustomClaims) Validate(ctx context.Context) error {
 	return nil
@@ -33,7 +32,6 @@ func EnsureValidToken() func(next http.Handler) http.Handler {
 	}
 
 	provider := jwks.NewCachingProvider(issuerURL, 5*time.Minute)
-
 	jwtSeverValidator, err := validator.New(
 		provider.KeyFunc,
 		validator.RS256,
@@ -52,8 +50,6 @@ func EnsureValidToken() func(next http.Handler) http.Handler {
 
 	errorHandler := func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("Encountered error while validating JWT: %v", err)
-
-		debug.PrintStack()
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"message":"Failed to validate JWT."}`))

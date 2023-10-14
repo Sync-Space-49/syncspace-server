@@ -9,6 +9,5 @@ func (c CustomClaims) HasScope(expectedScope string) bool {
 			return true
 		}
 	}
-
 	return false
 }
