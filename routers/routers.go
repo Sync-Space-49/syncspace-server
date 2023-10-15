@@ -11,16 +11,15 @@ import (
 	"github.com/Sync-Space-49/syncspace-server/db"
 )
 
-var (
+const (
 	usersPrefix         = "/api/users"
 	organizationsPrefix = "/api/organizations"
 	boardsPrefix        = "/api/organization/:organizationId/boards"
-	// Probably add variables for prevelege ID's here
 )
 
 func NewAPI(cfg *config.Config, db *db.DB) http.Handler {
 	corsWrapper := cors.New(cors.Options{
-		AllowedMethods: []string{"GET", "POST"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
 		AllowedHeaders: []string{"Content-Type", "Origin", "Accept", "*"},
 	})
 
