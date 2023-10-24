@@ -21,7 +21,7 @@ func HasPermission(userId string, permissionName string) (bool, error) {
 		return false, fmt.Errorf("failed to get user roles: %v", err)
 	}
 	for _, permission := range *userPermissions {
-		if permission.PermissionName == permissionName {
+		if permission.Name == permissionName {
 			return true, nil
 		}
 	}
