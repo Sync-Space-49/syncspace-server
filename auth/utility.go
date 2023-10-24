@@ -394,7 +394,7 @@ func DeleteRole(roleId string) error {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusNoContent {
+	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
 		return fmt.Errorf(`failed to delete role with id "%s": %s`, roleId, string(body))
 	}
