@@ -3,8 +3,6 @@ package organization
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strconv"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/config"
@@ -157,32 +155,6 @@ func (c *Controller) DeleteOrganizationById(ctx context.Context, organizationId 
 		return err
 	}
 	return nil
-}
-
-func (c *Controller) GetUserOrganizations(ctx context.Context, userId string) (*[]Organization, error) {
-	usersRoles, err := auth.GetUserRoles(userId)
-	if err != nil {
-		return nil, err
-	}
-
-	var orgIds []int
-	re := regexp.MustCompile("[0-9]+")
-	for _, role := range *usersRoles {
-		organizationId, err := strconv.Atoi(re.FindString(role.Name))
-		if err != nil {
-			return nil, err
-		}
-		orgIds = append(orgIds, organizationId)
-	}
-
-	var organizations []Organization
-	err = c.db.DB.SelectContext(ctx, &organizations, `
-		SELECT * FROM Organizations WHERE id IN (?);
-	`, orgIds)
-	if err != nil {
-		return nil, err
-	}
-	return &organizations, nil
 }
 
 func (c *Controller) AddMember(userId string, organizationId string) error {

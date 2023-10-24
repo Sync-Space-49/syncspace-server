@@ -1,14 +1,18 @@
 package user
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/config"
+	"github.com/Sync-Space-49/syncspace-server/controllers/organization"
 	"github.com/Sync-Space-49/syncspace-server/db"
 )
 
@@ -155,4 +159,30 @@ func (c *Controller) DeleteUserById(userId string) error {
 	}
 
 	return nil
+}
+
+func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string) (*[]organization.Organization, error) {
+	usersRoles, err := auth.GetUserRoles(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var orgIds []int
+	re := regexp.MustCompile("[0-9]+")
+	for _, role := range *usersRoles {
+		organizationId, err := strconv.Atoi(re.FindString(role.Name))
+		if err != nil {
+			return nil, err
+		}
+		orgIds = append(orgIds, organizationId)
+	}
+
+	var organizations []organization.Organization
+	err = c.db.DB.SelectContext(ctx, &organizations, `
+		SELECT * FROM Organizations WHERE id IN (?);
+	`, orgIds)
+	if err != nil {
+		return nil, err
+	}
+	return &organizations, nil
 }

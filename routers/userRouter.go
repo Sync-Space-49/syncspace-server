@@ -29,6 +29,7 @@ func registerUserRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUser))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateUser))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteUser))).Methods("DELETE")
+	handler.router.Handle(fmt.Sprintf("%s/{userId}/organizations", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOrganizations))).Methods("POST")
 	return handler.router
 }
 
@@ -133,4 +134,30 @@ func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *userHandler) GetUserOrganizations(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	userId := params["userId"]
+	if userId == "" {
+		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	signedInUserId := token.RegisteredClaims.Subject
+	if signedInUserId != userId {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to get organizations for user with id %s", signedInUserId, userId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	organizations, err := handler.controller.GetUserOrganizationsById(ctx, userId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get organizations for user with id %s: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(organizations)
 }

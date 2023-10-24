@@ -31,7 +31,6 @@ func registerOrganizationRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganization))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateOrganization))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteOrganization))).Methods("DELETE")
-	handler.router.Handle(fmt.Sprintf("%s/{userId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOrganizations))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganizationMembers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToOrganization))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromOrganization))).Methods("DELETE")
@@ -172,32 +171,6 @@ func (handler *organizationHandler) DeleteOrganization(writer http.ResponseWrite
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
-}
-
-func (handler *organizationHandler) GetUserOrganizations(writer http.ResponseWriter, request *http.Request) {
-	params := mux.Vars(request)
-	userId := params["userId"]
-	if userId == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
-		return
-	}
-
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	signedInUserId := token.RegisteredClaims.Subject
-	if signedInUserId != userId {
-		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to get organizations for user with id %s", signedInUserId, userId), http.StatusForbidden)
-		return
-	}
-
-	ctx := request.Context()
-	organizations, err := handler.controller.GetUserOrganizations(ctx, userId)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get organizations for user with id %s: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(organizations)
 }
 
 func (handler *organizationHandler) GetOrganizationMembers(writer http.ResponseWriter, request *http.Request) {
