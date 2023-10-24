@@ -292,13 +292,6 @@ func DeletePermissions(permissions []Permission) error {
 		}
 	}
 
-	for _, permission := range permissionsToKeep {
-		println(permission.Name)
-	}
-	for _, permission := range serverPermissions.Scopes {
-		println(permission.Name)
-	}
-
 	url = fmt.Sprintf("%sapi/v2/resource-servers/%s", cfg.Auth0.Domain, cfg.Auth0.Server.Id)
 	formattedPermissions := `{ "scopes": [ `
 	for i, permission := range permissionsToKeep {
