@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
@@ -167,21 +166,42 @@ func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string
 		return nil, err
 	}
 
-	var orgIds []int
-	re := regexp.MustCompile("[0-9]+")
+	var orgIds []string
+	findUUIDInRoleRegex := regexp.MustCompile(`org(.*?):`)
 	for _, role := range *usersRoles {
-		organizationId, err := strconv.Atoi(re.FindString(role.Name))
+		matches := findUUIDInRoleRegex.FindStringSubmatch(role.Name)
+		if len(matches) < 2 {
+			continue
+		}
+		organizationId := matches[1]
+		alreadyFound := false
+		for _, orgId := range orgIds {
+			if orgId == organizationId {
+				alreadyFound = true
+				break
+			}
+		}
+		if !alreadyFound {
+			orgIds = append(orgIds, organizationId)
+		}
+	}
+
+	rows, err := c.db.DB.QueryxContext(ctx, `
+		SELECT * FROM Organizations WHERE id IN ($1);
+	`, strings.Join(orgIds, ","))
+	if err != nil {
+		return nil, err
+	}
+	var organizations []organization.Organization
+	for rows.Next() {
+		organization := organization.Organization{}
+		err = rows.StructScan(&organization)
 		if err != nil {
 			return nil, err
 		}
-		orgIds = append(orgIds, organizationId)
+		organizations = append(organizations, organization)
 	}
-
-	var organizations []organization.Organization
-	err = c.db.DB.SelectContext(ctx, &organizations, `
-		SELECT * FROM Organizations WHERE id IN (?);
-	`, orgIds)
-	if err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return &organizations, nil

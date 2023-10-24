@@ -26,10 +26,10 @@ func registerUserRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 		controller: user.NewController(cfg, db),
 	}
 
-	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUser))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUser))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateUser))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteUser))).Methods("DELETE")
-	handler.router.Handle(fmt.Sprintf("%s/{userId}/organizations", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOrganizations))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{userId}/organizations", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOrganizations))).Methods("GET")
 	return handler.router
 }
 

@@ -66,7 +66,7 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 		return
 	}
 
-	err = handler.controller.InitializeOrganization(userId, org.Id)
+	err = handler.controller.InitializeOrganization(userId, org.Id.String())
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to initialize organization: %s", err.Error()), http.StatusInternalServerError)
 		return
