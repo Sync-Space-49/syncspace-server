@@ -79,6 +79,13 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 		http.Error(writer, fmt.Sprintf("Failed to create owner role for organization: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+	memberRoleName := fmt.Sprintf("org%s:owner", org.Id)
+	memberRoleDescription := fmt.Sprintf("Owner of organization with the id: %s", org.Id)
+	memberRole, err := auth.CreateRole(memberRoleName, memberRoleDescription)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create owner role for organization: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
 
 	orgMemberPermissions := [][]string{
 		{
@@ -138,6 +145,11 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 	err = auth.AddUserToRole(userId, ownerRole.Id)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to add owner role to user: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	err = auth.AddUserToRole(userId, memberRole.Id)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to add member role to user: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
