@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/auth0/go-jwt-middleware/v2 v2.1.0
+	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/jmoiron/sqlx v1.3.5

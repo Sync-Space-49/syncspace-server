@@ -25,7 +25,7 @@ func NewController(cfg *config.Config, db *db.DB) *Controller {
 }
 
 func (c *Controller) GetUserById(userId string) (*User, error) {
-	managementToken, err := auth.GetManagementToken(c.cfg)
+	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return &User{}, err
 	}
@@ -54,7 +54,7 @@ func (c *Controller) GetUserById(userId string) (*User, error) {
 }
 
 func (c *Controller) UpdateUserById(userId string, email string, username string, password string, pfpUrl string) error {
-	managementToken, err := auth.GetManagementToken(c.cfg)
+	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return fmt.Errorf("failed to get maintenance token: %w", err)
 	}
@@ -71,8 +71,8 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 		pfpUrl = user.Picture
 	}
 
-	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
 	method := "PATCH"
+	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
 
 	var payload io.Reader
 	if password != "" {
@@ -131,7 +131,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 }
 
 func (c *Controller) DeleteUserById(userId string) error {
-	managementToken, err := auth.GetManagementToken(c.cfg)
+	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return err
 	}

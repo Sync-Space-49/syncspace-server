@@ -32,6 +32,7 @@ type Config struct {
 		}
 		Server struct {
 			Audience     string `default:"127.0.0.1:8080" envconfig:"AUTH0_SERVER_AUDIENCE"`
+			Id           string `default:"" envconfig:"AUTH0_SERVER_ID"`
 			ClientId     string `default:"" envconfig:"AUTH0_SERVER_CLIENT_ID"`
 			ClientSecret string `default:"" envconfig:"AUTH0_SERVER_CLIENT_SECRET"`
 		}
