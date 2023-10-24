@@ -241,11 +241,16 @@ func (handler *organizationHandler) AddMemberToOrganization(writer http.Response
 		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
 		return
 	}
+	userId := request.FormValue("user_id")
+	if userId == "" {
+		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		return
+	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
+	signedInUserId := token.RegisteredClaims.Subject
 	addUsersPerm := fmt.Sprintf("org%s:add_members", organizationId)
-	canAddUsers, err := auth.HasPermission(userId, addUsersPerm)
+	canAddUsers, err := auth.HasPermission(signedInUserId, addUsersPerm)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
 		return
