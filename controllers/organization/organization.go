@@ -122,3 +122,77 @@ func (c *Controller) AddMember(userId string, organizationId string) error {
 	}
 	return nil
 }
+
+func (c *Controller) InitializeOrganization(ownerId string, organizationId string) error {
+	ownerRoleName := fmt.Sprintf("org%s:owner", organizationId)
+	ownerRoleDescription := fmt.Sprintf("Owner of organization with the id: %s", organizationId)
+	ownerRole, err := auth.CreateRole(ownerRoleName, ownerRoleDescription)
+	if err != nil {
+		return err
+	}
+	memberRoleName := fmt.Sprintf("org%s:member", organizationId)
+	memberRoleDescription := fmt.Sprintf("Member of organization with the id: %s", organizationId)
+	memberRole, err := auth.CreateRole(memberRoleName, memberRoleDescription)
+	if err != nil {
+		return err
+	}
+
+	readPerm := []string{
+		fmt.Sprintf("org%s:read", organizationId),
+		fmt.Sprintf("Allows you to read the contents of the organization with id %s", organizationId),
+	}
+	deletePerm := []string{
+		fmt.Sprintf("org%s:delete", organizationId),
+		fmt.Sprintf("Allows you to delete the organization with id %s", organizationId),
+	}
+	updatePerm := []string{
+		fmt.Sprintf("org%s:update", organizationId),
+		fmt.Sprintf("Allows you to update info about the organization with id %s", organizationId),
+	}
+	addMembersPerm := []string{
+		fmt.Sprintf("org%s:add_members", organizationId),
+		fmt.Sprintf("Allows you to add members to the organization with id %s", organizationId),
+	}
+	removeMembersPerm := []string{
+		fmt.Sprintf("org%s:remove_members", organizationId),
+		fmt.Sprintf("Allows you to remove members from the organization with id %s", organizationId),
+	}
+
+	orgMemberPermissions := [][]string{
+		readPerm,
+	}
+	orgOwnerPermissions := append(orgMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm)
+
+	// Because the owner role has all permissions, we only need to call CreatePermissions once
+	err = auth.CreatePermissions(orgOwnerPermissions)
+	if err != nil {
+		return fmt.Errorf("failed to create permissions for organization: %w", err)
+	}
+
+	orgMemberPermissionNames := make([]string, len(orgMemberPermissions))
+	for i, permission := range orgMemberPermissions {
+		orgMemberPermissionNames[i] = permission[0]
+	}
+	err = auth.AddPermissionsToRole(memberRole.Id, orgMemberPermissionNames)
+	if err != nil {
+		return fmt.Errorf("failed to add permissions to member role: %w", err)
+	}
+	orgOwnerPermissionNames := make([]string, len(orgOwnerPermissions))
+	for i, permission := range orgOwnerPermissions {
+		orgOwnerPermissionNames[i] = permission[0]
+	}
+	err = auth.AddPermissionsToRole(ownerRole.Id, orgOwnerPermissionNames)
+	if err != nil {
+		return fmt.Errorf("failed to add permissions to owner role: %w", err)
+	}
+
+	err = auth.AddUserToRole(ownerId, ownerRole.Id)
+	if err != nil {
+		return fmt.Errorf("failed to add owner role to user: %w", err)
+	}
+	err = auth.AddUserToRole(ownerId, memberRole.Id)
+	if err != nil {
+		return fmt.Errorf("failed to add member role to user: %w", err)
+	}
+	return nil
+}

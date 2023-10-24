@@ -72,89 +72,9 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 		return
 	}
 
-	ownerRoleName := fmt.Sprintf("org%s:owner", org.Id)
-	ownerRoleDescription := fmt.Sprintf("Owner of organization with the id: %s", org.Id)
-	ownerRole, err := auth.CreateRole(ownerRoleName, ownerRoleDescription)
+	err = handler.controller.InitializeOrganization(userId, org.Id)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to create owner role for organization: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	memberRoleName := fmt.Sprintf("org%s:member", org.Id)
-	memberRoleDescription := fmt.Sprintf("Member of organization with the id: %s", org.Id)
-	memberRole, err := auth.CreateRole(memberRoleName, memberRoleDescription)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to create owner role for organization: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	orgMemberPermissions := [][]string{
-		{
-			fmt.Sprintf("org%s:read", org.Id),
-			fmt.Sprintf("Allows you to read the contents of the organization with id %s", org.Id),
-		},
-	}
-	orgOwnerPermissions := [][]string{
-		{
-			fmt.Sprintf("org%s:delete", org.Id),
-			fmt.Sprintf("Allows you to delete the organization with id %s", org.Id),
-		},
-		{
-			fmt.Sprintf("org%s:update", org.Id),
-			fmt.Sprintf("Allows you to update info about the organization with id %s", org.Id),
-		},
-		{
-			fmt.Sprintf("org%s:add_members", org.Id),
-			fmt.Sprintf("Allows you to add members to the organization with id %s", org.Id),
-		},
-		{
-			fmt.Sprintf("org%s:remove_members", org.Id),
-			fmt.Sprintf("Allows you to remove members from the organization with id %s", org.Id),
-		},
-	}
-
-	err = auth.CreatePermissions(orgMemberPermissions)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to create permissions for organization: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	err = auth.CreatePermissions(orgOwnerPermissions)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to create permissions for organization: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	orgMemberPermissionNames := make([]string, len(orgMemberPermissions))
-	for i, permission := range orgMemberPermissions {
-		orgMemberPermissionNames[i] = permission[0]
-	}
-	err = auth.AddPermissionsToRole(ownerRole.Id, orgMemberPermissionNames)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add permissions to owner role: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	err = auth.AddPermissionsToRole(memberRole.Id, orgMemberPermissionNames)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add permissions to member role: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	orgOwnerPermissionNames := make([]string, len(orgOwnerPermissions))
-	for i, permission := range orgOwnerPermissions {
-		orgOwnerPermissionNames[i] = permission[0]
-	}
-	err = auth.AddPermissionsToRole(ownerRole.Id, orgOwnerPermissionNames)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add permissions to owner role: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	err = auth.AddUserToRole(userId, ownerRole.Id)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add owner role to user: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	err = auth.AddUserToRole(userId, memberRole.Id)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add member role to user: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to initialize organization: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
