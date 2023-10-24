@@ -93,152 +93,6 @@ func GetUserPermissions(userId string) (*[]Permission, error) {
 	return &userPermissions, nil
 }
 
-func GetUserRoles(userId string) (*[]Role, error) {
-	cfg, err := config.Get()
-	if err != nil {
-		return nil, err
-	}
-	managementToken, err := GetManagementToken()
-	if err != nil {
-		return nil, err
-	}
-	method := "GET"
-	url := fmt.Sprintf("%sapi/v2/users/%s/roles", cfg.Auth0.Domain, userId)
-	req, _ := http.NewRequest(method, url, nil)
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	body, _ := io.ReadAll(res.Body)
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get roles: %s", string(body))
-	}
-
-	var userRoles []Role
-	err = json.Unmarshal(body, &userRoles)
-	if err != nil {
-		return nil, err
-	}
-	return &userRoles, nil
-}
-
-func GetRoles(filter *string) (*[]Role, error) {
-	cfg, err := config.Get()
-	if err != nil {
-		return nil, err
-	}
-	managementToken, err := GetManagementToken()
-	if err != nil {
-		return nil, err
-	}
-	method := "GET"
-	url := fmt.Sprintf("%sapi/v2/roles", cfg.Auth0.Domain)
-	req, _ := http.NewRequest(method, url, nil)
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
-	if filter != nil {
-		q := req.URL.Query()
-		q.Add("name_filter", *filter)
-		req.URL.RawQuery = q.Encode()
-	}
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	body, _ := io.ReadAll(res.Body)
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get roles: %s", string(body))
-	}
-
-	var roles []Role
-	err = json.Unmarshal(body, &roles)
-	if err != nil {
-		return nil, err
-	}
-	return &roles, nil
-}
-
-func AddUserToRole(userId string, roleId string) error {
-	cfg, err := config.Get()
-	if err != nil {
-		return err
-	}
-	managementToken, err := GetManagementToken()
-	if err != nil {
-		return err
-	}
-	url := fmt.Sprintf("%sapi/v2/users/%s/roles", cfg.Auth0.Domain, userId)
-	payload := strings.NewReader(fmt.Sprintf(`{ "roles": [ "%s" ] }`, roleId))
-	method := "POST"
-	req, err := http.NewRequest(method, url, payload)
-	if err != nil {
-		return err
-	}
-	req.Header.Add("content-type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
-	req.Header.Add("cache-control", "no-cache")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(res.Body)
-		return fmt.Errorf(`failed to add role with id "%s" to user with id "%s": %s`, roleId, userId, string(body))
-	}
-
-	return nil
-}
-
-func CreateRole(roleName string, roleDescription string) (*Role, error) {
-	cfg, err := config.Get()
-	if err != nil {
-		return nil, err
-	}
-	managementToken, err := GetManagementToken()
-	if err != nil {
-		return nil, err
-	}
-	url := fmt.Sprintf("%sapi/v2/roles", cfg.Auth0.Domain)
-	payload := strings.NewReader(fmt.Sprintf(`{ "name": "%s", "description": "%s" }`, roleName, roleDescription))
-	method := "POST"
-	req, err := http.NewRequest(method, url, payload)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("content-type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
-	req.Header.Add("cache-control", "no-cache")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	body, _ := io.ReadAll(res.Body)
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf(`failed to create new role: %s`, string(body))
-	}
-
-	var newRole Role
-	err = json.Unmarshal(body, &newRole)
-	if err != nil {
-		return nil, err
-	}
-	return &newRole, nil
-}
-
 func CreatePermission(permissionName string, permissionDescription string) error {
 	cfg, err := config.Get()
 	if err != nil {
@@ -316,6 +170,84 @@ func CreatePermissions(permissions [][]string) error {
 	return nil
 }
 
+func GetRoles(filter *string) (*[]Role, error) {
+	cfg, err := config.Get()
+	if err != nil {
+		return nil, err
+	}
+	managementToken, err := GetManagementToken()
+	if err != nil {
+		return nil, err
+	}
+	method := "GET"
+	url := fmt.Sprintf("%sapi/v2/roles", cfg.Auth0.Domain)
+	req, _ := http.NewRequest(method, url, nil)
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+	if filter != nil {
+		q := req.URL.Query()
+		q.Add("name_filter", *filter)
+		req.URL.RawQuery = q.Encode()
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get roles: %s", string(body))
+	}
+
+	var roles []Role
+	err = json.Unmarshal(body, &roles)
+	if err != nil {
+		return nil, err
+	}
+	return &roles, nil
+}
+
+func CreateRole(roleName string, roleDescription string) (*Role, error) {
+	cfg, err := config.Get()
+	if err != nil {
+		return nil, err
+	}
+	managementToken, err := GetManagementToken()
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%sapi/v2/roles", cfg.Auth0.Domain)
+	payload := strings.NewReader(fmt.Sprintf(`{ "name": "%s", "description": "%s" }`, roleName, roleDescription))
+	method := "POST"
+	req, err := http.NewRequest(method, url, payload)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+	req.Header.Add("cache-control", "no-cache")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(`failed to create new role: %s`, string(body))
+	}
+
+	var newRole Role
+	err = json.Unmarshal(body, &newRole)
+	if err != nil {
+		return nil, err
+	}
+	return &newRole, nil
+}
+
 func AddPermissionToRole(roleId string, permissionName string) error {
 	cfg, err := config.Get()
 	if err != nil {
@@ -388,6 +320,142 @@ func AddPermissionsToRole(roleId string, permissionNames []string) error {
 	if res.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(res.Body)
 		return fmt.Errorf(`failed to assign permissions to role with id "%s": %s`, roleId, string(body))
+	}
+
+	return nil
+}
+
+func GetUserRoles(userId string) (*[]Role, error) {
+	cfg, err := config.Get()
+	if err != nil {
+		return nil, err
+	}
+	managementToken, err := GetManagementToken()
+	if err != nil {
+		return nil, err
+	}
+	method := "GET"
+	url := fmt.Sprintf("%sapi/v2/users/%s/roles", cfg.Auth0.Domain, userId)
+	req, _ := http.NewRequest(method, url, nil)
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get roles: %s", string(body))
+	}
+
+	var userRoles []Role
+	err = json.Unmarshal(body, &userRoles)
+	if err != nil {
+		return nil, err
+	}
+	return &userRoles, nil
+}
+
+func AddUserToRole(userId string, roleId string) error {
+	cfg, err := config.Get()
+	if err != nil {
+		return err
+	}
+	managementToken, err := GetManagementToken()
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%sapi/v2/users/%s/roles", cfg.Auth0.Domain, userId)
+	payload := strings.NewReader(fmt.Sprintf(`{ "roles": [ "%s" ] }`, roleId))
+	method := "POST"
+	req, err := http.NewRequest(method, url, payload)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+	req.Header.Add("cache-control", "no-cache")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(res.Body)
+		return fmt.Errorf(`failed to add role with id "%s" to user with id "%s": %s`, roleId, userId, string(body))
+	}
+
+	return nil
+}
+
+func RemoveUserFromRole(userId string, roleId string) error {
+	cfg, err := config.Get()
+	if err != nil {
+		return err
+	}
+	managementToken, err := GetManagementToken()
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%sapi/v2/users/%s/roles", cfg.Auth0.Domain, userId)
+	payload := strings.NewReader(fmt.Sprintf(`{ "roles": [ "%s" ] }`, roleId))
+	method := "DELETE"
+	req, err := http.NewRequest(method, url, payload)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+	req.Header.Add("cache-control", "no-cache")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(res.Body)
+		return fmt.Errorf(`failed to remove role with id "%s" from user with id "%s": %s`, roleId, userId, string(body))
+	}
+
+	return nil
+}
+
+func RemoveUserFromRoles(userId string, roleIds []string) error {
+	cfg, err := config.Get()
+	if err != nil {
+		return err
+	}
+	managementToken, err := GetManagementToken()
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%sapi/v2/users/%s/roles", cfg.Auth0.Domain, userId)
+	payload := strings.NewReader(fmt.Sprintf(`{ "roles": [ "%s" ] }`, strings.Join(roleIds, `", "`)))
+	method := "DELETE"
+	req, err := http.NewRequest(method, url, payload)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+	req.Header.Add("cache-control", "no-cache")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(res.Body)
+		return fmt.Errorf(`failed to remove roles from user with id "%s": %s`, userId, string(body))
 	}
 
 	return nil

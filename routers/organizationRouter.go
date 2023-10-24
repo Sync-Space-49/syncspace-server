@@ -28,13 +28,12 @@ func registerOrganizationRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	}
 
 	handler.router.Handle(organizationsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateOrganization))).Methods("POST")
-	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganization))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganization))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateOrganization))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteOrganization))).Methods("DELETE")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOrganizations))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganizationMembers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToOrganization))).Methods("POST")
-	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganizationMember))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromOrganization))).Methods("DELETE")
 	// TODO: controller methods below
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.GetOrganizationRoles).Methods("GET")
@@ -187,6 +186,13 @@ func (handler *organizationHandler) GetUserOrganizations(writer http.ResponseWri
 		return
 	}
 
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	signedInUserId := token.RegisteredClaims.Subject
+	if signedInUserId != userId {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to get organizations for user with id %s", signedInUserId, userId), http.StatusForbidden)
+		return
+	}
+
 	ctx := request.Context()
 	organizations, err := handler.controller.GetUserOrganizations(ctx, userId)
 	if err != nil {
@@ -244,38 +250,39 @@ func (handler *organizationHandler) AddMemberToOrganization(writer http.Response
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-func (handler *organizationHandler) GetOrganizationMember(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// memberId, err := strconv.Atoi(params["memberId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Member ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request is apart of organization (posisbly with middleware)
-	// TODO: Get member by organization ID and member ID
-	// TODO: Return member with status code 200
-}
-
 func (handler *organizationHandler) RemoveMemberFromOrganization(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// memberId, err := strconv.Atoi(params["memberId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Member ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can remove members from organization (posisbly with middleware)
-	// TODO: Remove member from organization
-	// TODO: send back 204
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	memberId := params["memberId"]
+	if memberId == "" {
+		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	removeUsersPerm := fmt.Sprintf("org%s:remove_members", organizationId)
+	canRemoveUsers, err := auth.HasPermission(userId, removeUsersPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canRemoveUsers {
+		http.Error(writer, fmt.Sprintf("User does not have permission to remove users from organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	err = handler.controller.RemoveMember(memberId, organizationId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get users in org with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 // TODO: below
