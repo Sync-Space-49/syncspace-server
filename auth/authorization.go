@@ -1,6 +1,9 @@
 package auth
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 func (c CustomClaims) HasScope(expectedScope string) bool {
 	result := strings.Split(c.Scope, " ")
@@ -10,4 +13,17 @@ func (c CustomClaims) HasScope(expectedScope string) bool {
 		}
 	}
 	return false
+}
+
+func HasPermission(userId string, permissionName string) (bool, error) {
+	userPermissions, err := GetUserPermissions(userId)
+	if err != nil {
+		return false, fmt.Errorf("failed to get user roles: %v", err)
+	}
+	for _, permission := range *userPermissions {
+		if permission.Name == permissionName {
+			return true, nil
+		}
+	}
+	return false, nil
 }

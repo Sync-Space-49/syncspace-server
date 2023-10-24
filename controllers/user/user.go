@@ -1,15 +1,19 @@
 package user
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/config"
+	"github.com/Sync-Space-49/syncspace-server/controllers/organization"
 	"github.com/Sync-Space-49/syncspace-server/db"
+	"github.com/jmoiron/sqlx"
 )
 
 type Controller struct {
@@ -25,7 +29,7 @@ func NewController(cfg *config.Config, db *db.DB) *Controller {
 }
 
 func (c *Controller) GetUserById(userId string) (*User, error) {
-	managementToken, err := auth.GetManagementToken(c.cfg)
+	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return &User{}, err
 	}
@@ -54,7 +58,7 @@ func (c *Controller) GetUserById(userId string) (*User, error) {
 }
 
 func (c *Controller) UpdateUserById(userId string, email string, username string, password string, pfpUrl string) error {
-	managementToken, err := auth.GetManagementToken(c.cfg)
+	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return fmt.Errorf("failed to get maintenance token: %w", err)
 	}
@@ -71,8 +75,8 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 		pfpUrl = user.Picture
 	}
 
-	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
 	method := "PATCH"
+	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
 
 	var payload io.Reader
 	if password != "" {
@@ -131,7 +135,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 }
 
 func (c *Controller) DeleteUserById(userId string) error {
-	managementToken, err := auth.GetManagementToken(c.cfg)
+	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return err
 	}
@@ -155,4 +159,43 @@ func (c *Controller) DeleteUserById(userId string) error {
 	}
 
 	return nil
+}
+
+func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string) (*[]organization.Organization, error) {
+	usersRoles, err := auth.GetUserRoles(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var orgIds []string
+	findUUIDInRoleRegex := regexp.MustCompile(`org(.*?):`)
+	for _, role := range *usersRoles {
+		matches := findUUIDInRoleRegex.FindStringSubmatch(role.Name)
+		if len(matches) < 2 {
+			continue
+		}
+		organizationId := matches[1]
+		alreadyFound := false
+		for _, orgId := range orgIds {
+			if orgId == organizationId {
+				alreadyFound = true
+				break
+			}
+		}
+		if !alreadyFound {
+			orgIds = append(orgIds, organizationId)
+		}
+	}
+
+	query, args, err := sqlx.In(`SELECT * FROM Organizations WHERE id IN (?)`, orgIds)
+	if err != nil {
+		return nil, err
+	}
+	query = c.db.DB.Rebind(query)
+	var organizations []organization.Organization
+	err = c.db.DB.SelectContext(ctx, &organizations, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return &organizations, nil
 }

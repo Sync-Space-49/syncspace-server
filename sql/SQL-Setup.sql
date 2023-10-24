@@ -9,7 +9,8 @@
 SET TIMEZONE = "America/New_York"; -- sets timezone for timestamptz datatypes
 
 CREATE TABLE IF NOT EXISTS Organizations (
-    id              SERIAL PRIMARY KEY,
+    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    owner_id        VARCHAR(64) NOT NULL,
     name            VARCHAR(255) NOT NULL,
     description     TEXT
 );
@@ -20,7 +21,7 @@ CREATE TABLE IF NOT EXISTS Boards (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- 'default' calling a function may not work? if not j remove the function call
     modified_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_private      BOOLEAN DEFAULT FALSE,                  -- defaults to public
-    organization_id SERIAL, FOREIGN KEY (organization_id) REFERENCES Organizations(id)
+    organization_id UUID, FOREIGN KEY (organization_id) REFERENCES Organizations(id)
 );
 
 CREATE TABLE IF NOT EXISTS Panels ( -- Changed to Panels from Lists
