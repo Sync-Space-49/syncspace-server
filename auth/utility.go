@@ -205,7 +205,7 @@ func DeletePermissions(permissions []Permission) error {
 		Scopes []struct {
 			Name        string `json:"value"`
 			Description string `json:"description"`
-		}
+		} `json:"scopes"`
 	}
 	err = json.Unmarshal(body, &serverPermissions)
 	if err != nil {
@@ -223,6 +223,13 @@ func DeletePermissions(permissions []Permission) error {
 		if keep {
 			permissionsToKeep = append(permissionsToKeep, Permission{serverPermission.Name, serverPermission.Description})
 		}
+	}
+
+	for _, permission := range permissionsToKeep {
+		println(permission.Name)
+	}
+	for _, permission := range serverPermissions.Scopes {
+		println(permission.Name)
 	}
 
 	url = fmt.Sprintf("%sapi/v2/resource-servers/%s", cfg.Auth0.Domain, cfg.Auth0.Server.Id)
