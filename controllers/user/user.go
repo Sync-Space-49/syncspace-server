@@ -13,6 +13,7 @@ import (
 	"github.com/Sync-Space-49/syncspace-server/config"
 	"github.com/Sync-Space-49/syncspace-server/controllers/organization"
 	"github.com/Sync-Space-49/syncspace-server/db"
+	"github.com/jmoiron/sqlx"
 )
 
 type Controller struct {
@@ -186,22 +187,14 @@ func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string
 		}
 	}
 
-	rows, err := c.db.DB.QueryxContext(ctx, `
-		SELECT * FROM Organizations WHERE id IN ($1);
-	`, strings.Join(orgIds, ","))
+	query, args, err := sqlx.In(`SELECT * FROM Organizations WHERE id IN (?)`, orgIds)
 	if err != nil {
 		return nil, err
 	}
+	query = c.db.DB.Rebind(query)
 	var organizations []organization.Organization
-	for rows.Next() {
-		organization := organization.Organization{}
-		err = rows.StructScan(&organization)
-		if err != nil {
-			return nil, err
-		}
-		organizations = append(organizations, organization)
-	}
-	if err := rows.Err(); err != nil {
+	err = c.db.DB.SelectContext(ctx, &organizations, query, args...)
+	if err != nil {
 		return nil, err
 	}
 	return &organizations, nil
