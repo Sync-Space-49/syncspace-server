@@ -24,11 +24,15 @@ func NewController(cfg *config.Config, db *db.DB) *Controller {
 	}
 }
 
-func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description string) (*Organization, error) {
+func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description *string) (*Organization, error) {
+	var query string
+	if description == nil {
+		query = `INSERT INTO Organizations (id, owner_id, name) VALUES ($1, $2, $3);`
+	} else {
+		query = `INSERT INTO Organizations (id, owner_id, name, description) VALUES ($1, $2, $3, $4);`
+	}
 	orgID := uuid.New().String()
-	_, err := c.db.DB.ExecContext(ctx, `
-		INSERT INTO Organizations (id, owner_id, name, description) VALUES ($1, $2, $3, $4);
-	`, orgID, userId, title, description)
+	_, err := c.db.DB.ExecContext(ctx, query, orgID, userId, title, description)
 	if err != nil {
 		return nil, err
 	}

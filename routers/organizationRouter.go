@@ -57,15 +57,11 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
 	}
-	if description == "" {
-		http.Error(writer, "No Description Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
 	ctx := request.Context()
-	org, err := handler.controller.CreateOrganization(ctx, userId, title, description)
+	org, err := handler.controller.CreateOrganization(ctx, userId, title, &description)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create organization: %s", err.Error()), http.StatusInternalServerError)
 		return
