@@ -59,6 +59,54 @@ func GetManagementToken() (string, error) {
 	return managementToken, nil
 }
 
+func GetPermissions() (*[]Permission, error) {
+	cfg, err := config.Get()
+	if err != nil {
+		return nil, err
+	}
+	managementToken, err := GetManagementToken()
+	if err != nil {
+		return nil, err
+	}
+	// Find all permissions for the server
+	url := fmt.Sprintf("%sapi/v2/resource-servers/%s", cfg.Auth0.Domain, cfg.Auth0.Server.Id)
+	method := "GET"
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(`failed to create find SyncSpace Server: %s`, string(body))
+	}
+
+	// Make PATCH request
+	var serverPermissions struct {
+		Scopes []struct {
+			Name        string `json:"value"`
+			Description string `json:"description"`
+		} `json:"scopes"`
+	}
+	err = json.Unmarshal(body, &serverPermissions)
+	if err != nil {
+		return nil, err
+	}
+	permissions := []Permission{}
+	for _, serverPermission := range serverPermissions.Scopes {
+		permissions = append(permissions, Permission{serverPermission.Name, serverPermission.Description})
+	}
+	return &permissions, nil
+}
+
 func GetUserPermissions(userId string) (*[]Permission, error) {
 	cfg, err := config.Get()
 	if err != nil {
@@ -102,8 +150,22 @@ func CreatePermission(permission Permission) error {
 	if err != nil {
 		return err
 	}
+	serverPermissions, err := GetPermissions()
+	if err != nil {
+		return err
+	}
+	newPermissions := append(*serverPermissions, permission)
 	url := fmt.Sprintf("%sapi/v2/resource-servers/%s", cfg.Auth0.Domain, cfg.Auth0.Server.Id)
-	payload := strings.NewReader(fmt.Sprintf(`{ "scopes": [ { "value": "%s", "description": "%s" } ] }`, permission.Name, permission.Description))
+	formattedPermissions := `{ "scopes": [ `
+	for i, permission := range newPermissions {
+		if i == 0 {
+			formattedPermissions += fmt.Sprintf(`{ "value": "%s", "description": "%s" }`, permission.Name, permission.Description)
+		} else {
+			formattedPermissions += fmt.Sprintf(`, { "value": "%s", "description": "%s" }`, permission.Name, permission.Description)
+		}
+	}
+	formattedPermissions += ` ] }`
+	payload := strings.NewReader(formattedPermissions)
 	method := "PATCH"
 	req, err := http.NewRequest(method, url, payload)
 	if err != nil {
@@ -136,6 +198,11 @@ func CreatePermissions(permissions []Permission) error {
 	if err != nil {
 		return err
 	}
+	serverPermissions, err := GetPermissions()
+	if err != nil {
+		return err
+	}
+	permissions = append(*serverPermissions, permissions...)
 	url := fmt.Sprintf("%sapi/v2/resource-servers/%s", cfg.Auth0.Domain, cfg.Auth0.Server.Id)
 	formattedPermissions := `{ "scopes": [ `
 	for i, permission := range permissions {
