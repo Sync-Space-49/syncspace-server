@@ -169,6 +169,36 @@ func (handler *organizationHandler) DeleteOrganization(writer http.ResponseWrite
 		return
 	}
 
+	orgRolePrefix := fmt.Sprintf("org%s:", organizationId)
+	orgRoles, err := auth.GetRoles(&orgRolePrefix)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get roles for organization %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if len(*orgRoles) == 0 {
+		http.Error(writer, fmt.Sprintf("No roles found for organization %s", organizationId), http.StatusInternalServerError)
+		return
+	}
+	for _, role := range *orgRoles {
+		permissions, err := auth.GetRolePermissions(role.Id)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to get permissions for role %s: %s", role.Id, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if len(*permissions) != 0 {
+			err = auth.DeletePermissions(*permissions)
+			if err != nil {
+				http.Error(writer, fmt.Sprintf("Failed to delete permissions for role %s: %s", role.Id, err.Error()), http.StatusInternalServerError)
+				return
+			}
+		}
+		err = auth.DeleteRole(role.Id)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to delete role %s: %s", role.Id, err.Error()), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
 }

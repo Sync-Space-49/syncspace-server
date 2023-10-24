@@ -55,28 +55,28 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 		return err
 	}
 
-	readPerm := []string{
-		fmt.Sprintf("org%s:read", organizationId),
-		fmt.Sprintf("Allows you to read the contents of the organization with id %s", organizationId),
+	readPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:read", organizationId),
+		Description: fmt.Sprintf("Allows you to read the contents of the organization with id %s", organizationId),
 	}
-	deletePerm := []string{
-		fmt.Sprintf("org%s:delete", organizationId),
-		fmt.Sprintf("Allows you to delete the organization with id %s", organizationId),
+	deletePerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:delete", organizationId),
+		Description: fmt.Sprintf("Allows you to delete the organization with id %s", organizationId),
 	}
-	updatePerm := []string{
-		fmt.Sprintf("org%s:update", organizationId),
-		fmt.Sprintf("Allows you to update info about the organization with id %s", organizationId),
+	updatePerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:update", organizationId),
+		Description: fmt.Sprintf("Allows you to update info about the organization with id %s", organizationId),
 	}
-	addMembersPerm := []string{
-		fmt.Sprintf("org%s:add_members", organizationId),
-		fmt.Sprintf("Allows you to add members to the organization with id %s", organizationId),
+	addMembersPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:add_members", organizationId),
+		Description: fmt.Sprintf("Allows you to add members to the organization with id %s", organizationId),
 	}
-	removeMembersPerm := []string{
-		fmt.Sprintf("org%s:remove_members", organizationId),
-		fmt.Sprintf("Allows you to remove members from the organization with id %s", organizationId),
+	removeMembersPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:remove_members", organizationId),
+		Description: fmt.Sprintf("Allows you to remove members from the organization with id %s", organizationId),
 	}
 
-	orgMemberPermissions := [][]string{
+	orgMemberPermissions := []auth.Permission{
 		readPerm,
 	}
 	orgOwnerPermissions := append(orgMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm)
@@ -89,7 +89,7 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 
 	orgMemberPermissionNames := make([]string, len(orgMemberPermissions))
 	for i, permission := range orgMemberPermissions {
-		orgMemberPermissionNames[i] = permission[0]
+		orgMemberPermissionNames[i] = permission.Name
 	}
 	err = auth.AddPermissionsToRole(memberRole.Id, orgMemberPermissionNames)
 	if err != nil {
@@ -97,7 +97,7 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 	}
 	orgOwnerPermissionNames := make([]string, len(orgOwnerPermissions))
 	for i, permission := range orgOwnerPermissions {
-		orgOwnerPermissionNames[i] = permission[0]
+		orgOwnerPermissionNames[i] = permission.Name
 	}
 	err = auth.AddPermissionsToRole(ownerRole.Id, orgOwnerPermissionNames)
 	if err != nil {

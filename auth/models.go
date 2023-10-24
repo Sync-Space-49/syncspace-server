@@ -11,13 +11,6 @@ type Role struct {
 }
 
 type Permission struct {
-	PermissionName           string `json:"permission_name"`
-	Description              string `json:"description"`
-	ResourceServerName       string `json:"resource_server_name"`
-	ResourceServerIdentifier string `json:"resource_server_identifier"`
-	Sources                  []struct {
-		SourceId   string `json:"source_id"`
-		SourceName string `json:"source_name"`
-		SourceType string `json:"source_type"`
-	} `json:"sources"`
+	Name        string `json:"permission_name"`
+	Description string `json:"description"`
 }
