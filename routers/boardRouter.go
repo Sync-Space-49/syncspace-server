@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -26,7 +27,7 @@ func registerBoardRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 		controller: board.NewController(cfg, db),
 	}
 	// Grab board with id of boardId from organization with id of organizationId
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.GetBoard).Methods("GET")
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.GetBoard).Methods("GET")
 
 	// Edit/replace info about a list based on params
 	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.UpdateList).Methods("PUT")
@@ -100,8 +101,48 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 }
 
 func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	boardId := params["boardId"]
+	if boardId == "" {
+		http.Error(writer, "No Board ID Found", http.StatusBadRequest)
+		return
+	}
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	readBoardPerm := fmt.Sprintf("board%s:read", boardId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
 
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+	if !canReadBoard {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	org, err := handler.controller.GetBoardById(ctx, boardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(org)
 }
+
 func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *http.Request) {
 
 }

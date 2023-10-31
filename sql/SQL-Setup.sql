@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS Boards (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- 'default' calling a function may not work? if not j remove the function call
     modified_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_private      BOOLEAN DEFAULT FALSE,                  -- defaults to public
-    organization_id UUID, FOREIGN KEY (organization_id) REFERENCES Organizations(id)
+    organization_id UUID, FOREIGN KEY (organization_id) REFERENCES Organizations(id),
+    owner_id        VARCHAR(64) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Panels ( -- Changed to Panels from Lists

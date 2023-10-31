@@ -14,7 +14,7 @@ import (
 const (
 	usersPrefix         = "/api/users"
 	organizationsPrefix = "/api/organizations"
-	boardsPrefix        = "/api/organization/:organizationId/boards"
+	boardsPrefix        = "/api/organizations/{organizationId}/boards"
 )
 
 func NewAPI(cfg *config.Config, db *db.DB) http.Handler {
