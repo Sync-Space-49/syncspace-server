@@ -15,10 +15,10 @@ var (
 	s3Client *s3.S3
 )
 
-func GetS3Client() (*s3.S3, error) {
+func GetS3Client() error {
 	cfg, err := config.Get()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if s3Client == nil {
@@ -35,12 +35,12 @@ func GetS3Client() (*s3.S3, error) {
 		})
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 		s3Client = s3.New(goSession)
 	}
 
-	return s3Client, nil
+	return nil
 }
 
 func UploadPfp(file *bytes.Reader, filename string) (*string, error) {
@@ -50,7 +50,7 @@ func UploadPfp(file *bytes.Reader, filename string) (*string, error) {
 	}
 
 	if s3Client == nil {
-		_, err := GetS3Client()
+		err := GetS3Client()
 		if err != nil {
 			return nil, err
 		}

@@ -8,8 +8,6 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
 	"github.com/auth0/go-jwt-middleware/v2/validator"
@@ -72,47 +70,61 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 		return
 	}
 
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenUserId := token.RegisteredClaims.Subject
+	if tokenUserId != userId {
+		http.Error(writer, "Unauthorized to Update This User", http.StatusUnauthorized)
+		return
+	}
+
 	err := request.ParseMultipartForm(10 << 20) // 10 MB limit on pfp size
 	if err != nil {
 		http.Error(writer, "Unable to parse form (is image too large?)", http.StatusBadRequest)
 		return
 	}
 	var pfpUrl *string
-	pfpFile, header, err := request.FormFile("profile_picture")
-	if err != nil {
-		http.Error(writer, "Unable to parse profile picture", http.StatusBadRequest)
-		return
-	}
-	decodedPfp, _, err := image.Decode(pfpFile)
-	defer pfpFile.Close()
-	if err != nil {
-		http.Error(writer, "Unable to decode image", http.StatusBadRequest)
-		return
-	}
-	fileExtension := filepath.Ext(header.Filename)
-	filename := fmt.Sprintf("%s-pfp%s", userId, fileExtension)
-	if err != nil {
-		http.Error(writer, "Unable to create temp file", http.StatusBadRequest)
-		return
-	}
-	pfpBuffer := new(bytes.Buffer)
-	err = png.Encode(pfpBuffer, resize.Resize(512, 0, decodedPfp, resize.Lanczos3))
-	if err != nil {
-		http.Error(writer, "Unable to rescale image", http.StatusBadRequest)
-		return
-	}
-	pfpUrl, err = aws.UploadPfp(bytes.NewReader(pfpBuffer.Bytes()), filename)
-	if err != nil {
-		http.Error(writer, "Unable to upload file", http.StatusInternalServerError)
-		return
-	}
-	defer os.RemoveAll("./temp/")
+	pfpFile, _, err := request.FormFile("profile_picture")
+	if err == nil {
+		decodedPfp, _, err := image.Decode(pfpFile)
+		defer pfpFile.Close()
+		if err != nil {
+			http.Error(writer, "Unable to decode image", http.StatusBadRequest)
+			return
+		}
 
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	tokenUserId := token.RegisteredClaims.Subject
-	if tokenUserId != userId {
-		http.Error(writer, "Unauthorized to Update This User", http.StatusUnauthorized)
-		return
+		pfpDimensions := 512
+		var rescaledPfp image.Image
+		// make smallest dimension pfpDimensions
+		if decodedPfp.Bounds().Dx() < decodedPfp.Bounds().Dy() {
+			rescaledPfp = resize.Resize(uint(pfpDimensions), 0, decodedPfp, resize.Lanczos3)
+		} else {
+			rescaledPfp = resize.Resize(0, uint(pfpDimensions), decodedPfp, resize.Lanczos3)
+		}
+		pfpBounds := rescaledPfp.Bounds()
+		pfpWidth := pfpBounds.Dx()
+		pfpHeight := pfpBounds.Dy()
+		x1, y1 := (pfpWidth/2)-(pfpDimensions/2), (pfpHeight/2)-(pfpDimensions/2)
+		x2, y2 := x1+pfpDimensions, y1+pfpDimensions
+		cropSize := image.Rect(x1, y1, x2, y2)
+		// https://stackoverflow.com/questions/32544927/cropping-and-creating-thumbnails-with-go
+		croppedPfp := rescaledPfp.(interface {
+			SubImage(r image.Rectangle) image.Image
+		}).SubImage(cropSize)
+
+		pfpBuffer := new(bytes.Buffer)
+		err = png.Encode(pfpBuffer, croppedPfp)
+		if err != nil {
+			http.Error(writer, "Unable to rescale image", http.StatusBadRequest)
+			return
+		}
+
+		fileExtension := ".png"
+		filename := fmt.Sprintf("%s-pfp%s", userId, fileExtension)
+		pfpUrl, err = aws.UploadPfp(bytes.NewReader(pfpBuffer.Bytes()), filename)
+		if err != nil {
+			http.Error(writer, "Unable to upload file", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	err = handler.controller.UpdateUserById(userId, email, username, password, pfpUrl)
