@@ -40,6 +40,15 @@ type Config struct {
 			Audience string `default:"syncspace.auth0.com/v2/api" envconfig:"AUTH0_MANAGEMENT_AUDIENCE"`
 		}
 	}
+	Wasabi struct {
+		AccessKey string `default:"" envconfig:"WASABI_ACCESS_KEY"`
+		SecretKey string `default:"" envconfig:"WASABI_SECRET_KEY"`
+		Region    string `default:"us-east-1" envconfig:"WASABI_REGION"`
+		Bucket    string `default:"" envconfig:"WASABI_BUCKET"`
+		FilePaths struct {
+			ProfilePicture string `default:"/pfp" envconfig:"WASABI_PFP_FILEPATH"`
+		}
+	}
 }
 
 var (

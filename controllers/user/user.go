@@ -57,7 +57,7 @@ func (c *Controller) GetUserById(userId string) (*User, error) {
 	return &user, nil
 }
 
-func (c *Controller) UpdateUserById(userId string, email string, username string, password string, pfpUrl string) error {
+func (c *Controller) UpdateUserById(userId string, email string, username string, password string, pfpUrl *string) error {
 	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return fmt.Errorf("failed to get maintenance token: %w", err)
@@ -71,8 +71,8 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 	if username == "" {
 		username = user.Username
 	}
-	if pfpUrl == "" {
-		pfpUrl = user.Picture
+	if pfpUrl == nil {
+		pfpUrl = &user.Picture
 	}
 
 	method := "PATCH"
@@ -80,9 +80,9 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 
 	var payload io.Reader
 	if password != "" {
-		payload = strings.NewReader(fmt.Sprintf(`{"email":"%s","picture":"%s","password":"%s"}`, email, pfpUrl, password))
+		payload = strings.NewReader(fmt.Sprintf(`{"email":"%s","picture":"%s","password":"%s"}`, email, *pfpUrl, password))
 	} else {
-		payload = strings.NewReader(fmt.Sprintf(`{"username":"%s","picture":"%s"}`, username, pfpUrl))
+		payload = strings.NewReader(fmt.Sprintf(`{"username":"%s","picture":"%s"}`, username, *pfpUrl))
 	}
 
 	req, err := http.NewRequest(method, url, payload)
