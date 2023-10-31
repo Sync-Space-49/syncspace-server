@@ -1,14 +1,20 @@
 package routers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	"image/png"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
 	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/gorilla/mux"
+	"github.com/nfnt/resize"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/aws"
@@ -72,17 +78,35 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 		return
 	}
 	var pfpUrl *string
-	file, header, err := request.FormFile("profile_picture")
-	if err == nil {
-		fileExtension := filepath.Ext(header.Filename)
-		filename := fmt.Sprintf("%s-pfp%s", userId, fileExtension)
-		pfpUrl, err = aws.UploadPfp(file, filename)
-		if err != nil {
-			http.Error(writer, "Unable to upload file", http.StatusInternalServerError)
-			return
-		}
-		defer file.Close()
+	pfpFile, header, err := request.FormFile("profile_picture")
+	if err != nil {
+		http.Error(writer, "Unable to parse profile picture", http.StatusBadRequest)
+		return
 	}
+	decodedPfp, _, err := image.Decode(pfpFile)
+	defer pfpFile.Close()
+	if err != nil {
+		http.Error(writer, "Unable to decode image", http.StatusBadRequest)
+		return
+	}
+	fileExtension := filepath.Ext(header.Filename)
+	filename := fmt.Sprintf("%s-pfp%s", userId, fileExtension)
+	if err != nil {
+		http.Error(writer, "Unable to create temp file", http.StatusBadRequest)
+		return
+	}
+	pfpBuffer := new(bytes.Buffer)
+	err = png.Encode(pfpBuffer, resize.Resize(512, 0, decodedPfp, resize.Lanczos3))
+	if err != nil {
+		http.Error(writer, "Unable to rescale image", http.StatusBadRequest)
+		return
+	}
+	pfpUrl, err = aws.UploadPfp(bytes.NewReader(pfpBuffer.Bytes()), filename)
+	if err != nil {
+		http.Error(writer, "Unable to upload file", http.StatusInternalServerError)
+		return
+	}
+	defer os.RemoveAll("./temp/")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenUserId := token.RegisteredClaims.Subject

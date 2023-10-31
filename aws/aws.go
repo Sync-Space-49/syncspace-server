@@ -1,8 +1,8 @@
 package aws
 
 import (
+	"bytes"
 	"fmt"
-	"mime/multipart"
 
 	"github.com/Sync-Space-49/syncspace-server/config"
 	"github.com/aws/aws-sdk-go/aws"
@@ -43,7 +43,7 @@ func GetS3Client() (*s3.S3, error) {
 	return s3Client, nil
 }
 
-func UploadPfp(file multipart.File, filename string) (*string, error) {
+func UploadPfp(file *bytes.Reader, filename string) (*string, error) {
 	cfg, err := config.Get()
 	if err != nil {
 		return nil, err
