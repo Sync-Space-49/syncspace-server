@@ -3,9 +3,13 @@ package routers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
+	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
+	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/gorilla/mux"
 
+	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/config"
 	"github.com/Sync-Space-49/syncspace-server/controllers/board"
 	"github.com/Sync-Space-49/syncspace-server/db"
@@ -57,10 +61,48 @@ func registerBoardRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	// delete a tag from a card
 	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardID}/{ListID}/{CardID}/{TagID}", organizationsPrefix, boardsPrefix), handler.AddTagToCard).Methods("DELETE")
 
+	// TODO: Update 'list' methods to 'stack' and 'panel'
+	handler.router.Handle(organizationsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
+
 	return handler.router
 }
 
+func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *http.Request) {
+	title := request.FormValue("title")
+	is_private, err := strconv.ParseBool(request.FormValue("is_private"))
+	if title == "" {
+		http.Error(writer, "No Title Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	ctx := request.Context()
+	org, err := handler.controller.CreateBoard(ctx, userId, title, is_private)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create organization: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	err = handler.controller.InitializeBoard(userId, org.Id.String())
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to initialize organization: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+}
 func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.Request) {
+
+}
+func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *http.Request) {
+
+}
+func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *http.Request) {
 
 }
 
