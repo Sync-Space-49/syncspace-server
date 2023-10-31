@@ -62,17 +62,19 @@ func registerBoardRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardID}/{ListID}/{CardID}/{TagID}", organizationsPrefix, boardsPrefix), handler.AddTagToCard).Methods("DELETE")
 
 	// TODO: Update 'list' methods to 'stack' and 'panel'
-	handler.router.Handle(organizationsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
-	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
-	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
-	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
+	handler.router.Handle(boardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
 
 	return handler.router
 }
 
 func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *http.Request) {
 	title := request.FormValue("title")
-	is_private, err := strconv.ParseBool(request.FormValue("is_private"))
+	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
+	params := mux.Vars(request)
+	orgId := params["OrganizationId"]
 	if title == "" {
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
@@ -81,21 +83,22 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
 	ctx := request.Context()
-	org, err := handler.controller.CreateBoard(ctx, userId, title, is_private)
+	board, err := handler.controller.CreateBoard(ctx, userId, title, isPrivate, orgId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to create organization: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to create board: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	err = handler.controller.InitializeBoard(userId, org.Id.String())
+	err = handler.controller.InitializeBoard(userId, board.Id.String(), orgId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to initialize organization: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to initialize board: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
 }
+
 func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.Request) {
 
 }
