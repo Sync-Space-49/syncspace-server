@@ -1,15 +1,21 @@
 package routers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	"image/png"
 	"net/http"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
 	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/gorilla/mux"
+	"github.com/nfnt/resize"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
+	"github.com/Sync-Space-49/syncspace-server/aws"
 	"github.com/Sync-Space-49/syncspace-server/config"
 	"github.com/Sync-Space-49/syncspace-server/controllers/user"
 	"github.com/Sync-Space-49/syncspace-server/db"
@@ -59,38 +65,6 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 	username := request.FormValue("username")
 	password := request.FormValue("password")
 
-	// TODO: see if user is updating profile picture (possilby handle this in abstracted function)
-	// err := request.ParseMultipartForm(10 << 20) // 10 MB limit on pfp size
-	// if err != nil {
-	// 	http.Error(writer, "Unable to parse form (is image too large?)", http.StatusBadRequest)
-	// 	return
-	// }
-	// // TODO: abstract this into function to be used in other places
-	// file, header, err := request.FormFile("profile_picture")
-	// if err != nil {
-	// 	http.Error(writer, "Unable to retrieve profile picture", http.StatusBadRequest)
-	// 	return
-	// }
-	// defer file.Close()
-
-	// fileExtension := filepath.Ext(header.Filename)
-	// filename := fmt.Sprintf("%s-%s%s", username, time.Now().Format(time.RFC3339), fileExtension)
-
-	// destinationFile, err := os.Create(filename)
-	// if err != nil {
-	// 	http.Error(writer, "Unable to create or open destination file", http.StatusInternalServerError)
-	// 	return
-	// }
-	// defer destinationFile.Close()
-	// _, err = io.Copy(destinationFile, file)
-	// if err != nil {
-	// 	http.Error(writer, "Unable to copy file", http.StatusInternalServerError)
-	// 	return
-	// }
-	// TODO: Add pfp to bucket
-	// user currently cannot upload pfp
-	pfpUrl := ""
-
 	if userId == "" {
 		http.Error(writer, "No User ID Found", http.StatusBadRequest)
 		return
@@ -103,7 +77,57 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 		return
 	}
 
-	err := handler.controller.UpdateUserById(userId, email, username, password, pfpUrl)
+	err := request.ParseMultipartForm(10 << 20) // 10 MB limit on pfp size
+	if err != nil {
+		http.Error(writer, "Unable to parse form (is image too large?)", http.StatusBadRequest)
+		return
+	}
+	var pfpUrl *string
+	pfpFile, _, err := request.FormFile("profile_picture")
+	if err == nil {
+		decodedPfp, _, err := image.Decode(pfpFile)
+		defer pfpFile.Close()
+		if err != nil {
+			http.Error(writer, "Unable to decode image", http.StatusBadRequest)
+			return
+		}
+
+		pfpDimensions := 512
+		var rescaledPfp image.Image
+		// make smallest dimension pfpDimensions
+		if decodedPfp.Bounds().Dx() < decodedPfp.Bounds().Dy() {
+			rescaledPfp = resize.Resize(uint(pfpDimensions), 0, decodedPfp, resize.Lanczos3)
+		} else {
+			rescaledPfp = resize.Resize(0, uint(pfpDimensions), decodedPfp, resize.Lanczos3)
+		}
+		pfpBounds := rescaledPfp.Bounds()
+		pfpWidth := pfpBounds.Dx()
+		pfpHeight := pfpBounds.Dy()
+		x1, y1 := (pfpWidth/2)-(pfpDimensions/2), (pfpHeight/2)-(pfpDimensions/2)
+		x2, y2 := x1+pfpDimensions, y1+pfpDimensions
+		cropSize := image.Rect(x1, y1, x2, y2)
+		// https://stackoverflow.com/questions/32544927/cropping-and-creating-thumbnails-with-go
+		croppedPfp := rescaledPfp.(interface {
+			SubImage(r image.Rectangle) image.Image
+		}).SubImage(cropSize)
+
+		pfpBuffer := new(bytes.Buffer)
+		err = png.Encode(pfpBuffer, croppedPfp)
+		if err != nil {
+			http.Error(writer, "Unable to rescale image", http.StatusBadRequest)
+			return
+		}
+
+		fileExtension := ".png"
+		filename := fmt.Sprintf("%s-pfp%s", userId, fileExtension)
+		pfpUrl, err = aws.UploadPfp(bytes.NewReader(pfpBuffer.Bytes()), filename)
+		if err != nil {
+			http.Error(writer, "Unable to upload file", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	err = handler.controller.UpdateUserById(userId, email, username, password, pfpUrl)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to Update User: %s", err.Error()), http.StatusInternalServerError)
 		return
