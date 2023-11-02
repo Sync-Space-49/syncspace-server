@@ -335,15 +335,59 @@ func (handler *organizationHandler) GetOrganizationRoles(writer http.ResponseWri
 }
 
 func (handler *organizationHandler) AddOrganizationRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can add roles to organization (posisbly with middleware)
-	// TODO: Add role to organization
-	// TODO: Return role with status code 201
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	addRolesPerm := fmt.Sprintf("%s:add_roles", orgPrefix)
+	canAddRoles, err := auth.HasPermission(userId, addRolesPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canAddRoles {
+		http.Error(writer, fmt.Sprintf("User does not have permission to add roles to organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	roleName := request.FormValue("name")
+	if roleName == "" {
+		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		return
+	}
+	roleDescription := request.FormValue("description")
+	if roleDescription == "" {
+		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		return
+	}
+	permissionIds := request.Form["permission_ids"]
+	if len(permissionIds) == 0 {
+		http.Error(writer, "No Permission IDs Found", http.StatusBadRequest)
+		return
+	}
+
+	roleName = fmt.Sprintf("%s:%s", orgPrefix, roleName)
+
+	auth.CreateRole(roleName, roleDescription)
+	role, err := auth.GetRoles(&roleName)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get role %s: %s", roleName, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	err = auth.AddPermissionsToRole((*role)[0].Id, permissionIds)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to add permissions to role %s: %s", roleName, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(role)
 }
 
 func (handler *organizationHandler) GetOrganizationRole(writer http.ResponseWriter, request *http.Request) {
@@ -371,6 +415,7 @@ func (handler *organizationHandler) GetOrganizationRole(writer http.ResponseWrit
 		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
 		return
 	}
+
 	role, err := auth.GetRole(roleId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get role for organization %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
