@@ -21,9 +21,9 @@ type organizationHandler struct {
 	controller *organization.Controller
 }
 
-func registerOrganizationRoutes(cfg *config.Config, db *db.DB) *mux.Router {
+func registerOrganizationRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB) *mux.Router {
 	handler := &organizationHandler{
-		router:     mux.NewRouter(),
+		router:     parentRouter.NewRoute().Subrouter(),
 		controller: organization.NewController(cfg, db),
 	}
 	handler.router.Handle(organizationsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateOrganization))).Methods("POST")
@@ -44,7 +44,8 @@ func registerOrganizationRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges/{privilegeId}", organizationsPrefix), handler.RemoveOrganizationRolePrivilege).Methods("DELETE")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.AddMemberToRole).Methods("POST")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.RemoveMemberFromRole).Methods("DELETE")
-	fmt.Println("Returning orgs router...")
+	fmt.Println("registering boardRouter...")
+	handler.router.PathPrefix("{organizationId}/boards").Handler(registerBoardRoutes(handler.router, cfg, db))
 	return handler.router
 }
 

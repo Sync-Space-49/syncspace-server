@@ -25,13 +25,14 @@ func NewAPI(cfg *config.Config, db *db.DB) http.Handler {
 	})
 
 	router := mux.NewRouter()
-	fmt.Println("TESTING HIT B")
+	fmt.Println("registering userRouter...")
 	router.PathPrefix(usersPrefix).Handler(registerUserRoutes(cfg, db))
-	fmt.Println("TESTING HIT C")
-	router.PathPrefix(organizationsPrefix).Handler(registerOrganizationRoutes(cfg, db))
-	fmt.Println("TESTING HIT D")
-	router.PathPrefix(boardsPrefix).Handler(registerBoardRoutes(cfg, db))
-	fmt.Println("TESTING HIT E")
+	fmt.Println("registering orgRouter...")
+	// orgRouter := router.PathPrefix()
+	router.PathPrefix(organizationsPrefix).Handler(registerOrganizationRoutes(router, cfg, db))
+	// fmt.Println(router)
+	// orgRouter.Handler(registerOrganizationRoutes(cfg, db, router))
+	// router.PathPrefix(boardsPrefix).Handler(registerBoardRoutes(orgRouter, cfg, db))
 
 	// send hello world as json in temp route
 	router.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {

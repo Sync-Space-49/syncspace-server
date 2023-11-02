@@ -21,9 +21,9 @@ type boardHandler struct {
 	controller *board.Controller
 }
 
-func registerBoardRoutes(cfg *config.Config, db *db.DB) *mux.Router {
+func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB) *mux.Router {
 	handler := &boardHandler{
-		router:     mux.NewRouter(),
+		router:     parentRouter.NewRoute().Subrouter(),
 		controller: board.NewController(cfg, db),
 	}
 	// Grab board with id of boardId from organization with id of organizationId
