@@ -41,8 +41,6 @@ func registerOrganizationRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.UpdateOrganizationRole).Methods("PUT")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.DeleteOrganizationRole).Methods("DELETE")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges", organizationsPrefix), handler.GetOrganizationRolePrivileges).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges/{privilegeId}", organizationsPrefix), handler.AddOrganizationRolePrivilege).Methods("POST")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges/{privilegeId}", organizationsPrefix), handler.RemoveOrganizationRolePrivilege).Methods("DELETE")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.AddMemberToRole).Methods("POST")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.RemoveMemberFromRole).Methods("DELETE")
 
@@ -373,7 +371,6 @@ func (handler *organizationHandler) AddOrganizationRole(writer http.ResponseWrit
 	}
 
 	roleName = fmt.Sprintf("%s:%s", orgPrefix, roleName)
-
 	auth.CreateRole(roleName, roleDescription)
 	role, err := auth.GetRoles(&roleName)
 	if err != nil {
@@ -416,7 +413,7 @@ func (handler *organizationHandler) GetOrganizationRole(writer http.ResponseWrit
 		return
 	}
 
-	role, err := auth.GetRole(roleId)
+	role, err := auth.GetRoleById(roleId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get role for organization %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
 		return
@@ -427,17 +424,93 @@ func (handler *organizationHandler) GetOrganizationRole(writer http.ResponseWrit
 }
 
 func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can update roles in organization (posisbly with middleware)
-	// TODO: Find what fields are being updated
-	// TODO: Get role by organization ID and role ID
-	// TODO: update role in database
-	// TODO: send back 204
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	roleId := params["roleId"]
+	if roleId == "" {
+		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	editRolesPerm := fmt.Sprintf("%s:edit_roles", orgPrefix)
+	canEditRoles, err := auth.HasPermission(userId, editRolesPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canEditRoles {
+		http.Error(writer, fmt.Sprintf("User does not have permission to edit roles to organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	roleName := request.FormValue("name")
+	if roleName == "" {
+		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		return
+	}
+	roleDescription := request.FormValue("description")
+	if roleDescription == "" {
+		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		return
+	}
+
+	roleName = fmt.Sprintf("%s:%s", orgPrefix, roleName)
+	auth.UpdateRole(roleId, roleName, roleDescription)
+	// TODO: update permissions
+	currentRolePermissions, err := auth.GetRolePermissions(roleId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get role permissions for role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	permissionNames := request.Form["permission_names"]
+	addPermissionNames := make([]string, 0)
+	for _, newPermissionName := range permissionNames {
+		isNewPerm := false
+		for _, currentPermissionName := range *currentRolePermissions {
+			if newPermissionName != currentPermissionName.Name {
+				isNewPerm = true
+				break
+			}
+		}
+		if isNewPerm {
+			addPermissionNames = append(addPermissionNames, newPermissionName)
+		}
+	}
+	err = auth.AddPermissionsToRole(roleId, addPermissionNames)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to add permissions to role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	deletePermissionIdNames := make([]string, 0)
+	for _, currentPermissionName := range *currentRolePermissions {
+		isDeletedPerm := true
+		for _, newPermissionName := range permissionNames {
+			if currentPermissionName.Name == newPermissionName {
+				isDeletedPerm = false
+				break
+			}
+		}
+		if isDeletedPerm {
+			deletePermissionIdNames = append(deletePermissionIdNames, currentPermissionName.Name)
+		}
+	}
+	err = auth.RemovePermissionsFromRole(roleId, deletePermissionIdNames)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to remove permissions from role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *organizationHandler) DeleteOrganizationRole(writer http.ResponseWriter, request *http.Request) {
@@ -467,41 +540,6 @@ func (handler *organizationHandler) GetOrganizationRolePrivileges(writer http.Re
 	// TODO: verify user sending request is apart of organization (posisbly with middleware)
 	// TODO: Get privileges by organization ID and role ID
 	// TODO: Return role privileges with status code 200
-}
-
-func (handler *organizationHandler) AddOrganizationRolePrivilege(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can add privileges to role in organization (posisbly with middleware)
-	// TODO: Add privilege to role
-	// TODO: Return privilege with status code 201
-	// TODO: send back 204
-}
-
-func (handler *organizationHandler) RemoveOrganizationRolePrivilege(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can remove privileges from role in organization (posisbly with middleware)
-	// TODO: Remove privilege from role
-	// TODO: send back 204
 }
 
 func (handler *organizationHandler) AddMemberToRole(writer http.ResponseWriter, request *http.Request) {
