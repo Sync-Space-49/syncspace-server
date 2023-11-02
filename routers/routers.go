@@ -14,7 +14,7 @@ import (
 const (
 	usersPrefix         = "/api/users"
 	organizationsPrefix = "/api/organizations"
-	boardsPrefix        = "/api/organization/:organizationId/boards"
+	boardsPrefix        = "/api/organizations/{organizationId}/boards"
 )
 
 func NewAPI(cfg *config.Config, db *db.DB) http.Handler {
@@ -25,8 +25,11 @@ func NewAPI(cfg *config.Config, db *db.DB) http.Handler {
 
 	router := mux.NewRouter()
 	router.PathPrefix(usersPrefix).Handler(registerUserRoutes(cfg, db))
-	router.PathPrefix(organizationsPrefix).Handler(registerOrganizationRoutes(cfg, db))
-	router.PathPrefix(boardsPrefix).Handler(registerBoardRoutes(cfg, db))
+	// orgRouter := router.PathPrefix()
+	router.PathPrefix(organizationsPrefix).Handler(registerOrganizationRoutes(router, cfg, db))
+	// fmt.Println(router)
+	// orgRouter.Handler(registerOrganizationRoutes(cfg, db, router))
+	// router.PathPrefix(boardsPrefix).Handler(registerBoardRoutes(orgRouter, cfg, db))
 
 	// send hello world as json in temp route
 	router.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {

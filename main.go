@@ -33,6 +33,8 @@ func run() error {
 		Addr:    cfg.APIHost,
 		Handler: routers.NewAPI(cfg, db),
 	}
+
+	fmt.Println("Running the server...")
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed while running server: %w", err)
 	}
