@@ -9,5 +9,5 @@ type Board struct {
 	CreatedAt      string    `db:"created_at" json:"created_at"`
 	ModifiedAt     string    `db:"modified_at" json:"modified_at"`
 	IsPrivate      bool      `db:"is_private" json:"is_private"`
-	OrganizationId int       `db:"organization_id" json:"organization_id"`
+	OrganizationId uuid.UUID `db:"organization_id" json:"organization_id"`
 }

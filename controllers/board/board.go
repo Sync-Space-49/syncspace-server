@@ -36,7 +36,7 @@ func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, 
 
 func (c *Controller) CreateBoard(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*Board, error) {
 	var query string
-	query = `INSERT INTO Boards (id, title, is_private, organization_id) VALUES ($1, $2, $3, $4);`
+	query = `INSERT INTO Boards (id, name, is_private, organization_id) VALUES ($1, $2, $3, $4);`
 	orgID := uuid.New().String()
 	_, err := c.db.DB.ExecContext(ctx, query, orgID, name, isPrivate, orgId)
 	if err != nil {
