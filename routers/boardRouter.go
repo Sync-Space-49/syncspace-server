@@ -103,19 +103,21 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	boardId := params["boardId"]
-	if boardId == "" {
-		http.Error(writer, "No Board ID Found", http.StatusBadRequest)
-		return
-	}
+	// The methods below will never run as they give a 404
+
+	// if organizationId == "" {
+	// 	http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+	// 	return
+	// }
+	// if boardId == "" {
+	// 	http.Error(writer, "No Board ID Found", http.StatusBadRequest)
+	// 	return
+	// }
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	readBoardPerm := fmt.Sprintf("board%s:read", boardId)
+	readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
 	canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
 
