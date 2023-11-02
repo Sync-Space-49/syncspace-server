@@ -75,23 +75,31 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 		Name:        fmt.Sprintf("org%s:remove_members", organizationId),
 		Description: fmt.Sprintf("Allows you to remove members from the organization with id %s", organizationId),
 	}
-	addRolesPerm := auth.Permission{
-		Name:        fmt.Sprintf("org%s:add_roles", organizationId),
-		Description: fmt.Sprintf("Allows you to use create, roles for the organization with id %s", organizationId),
+	createRolesPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:create_roles", organizationId),
+		Description: fmt.Sprintf("Allows you to use create roles for the organization with id %s", organizationId),
 	}
 	editRolesPerm := auth.Permission{
 		Name:        fmt.Sprintf("org%s:edit_roles", organizationId),
 		Description: fmt.Sprintf("Allows you to edit role properties, including adding and removing permissions, from roles for the organization with id %s", organizationId),
 	}
+	deleteRolesPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:delete_roles", organizationId),
+		Description: fmt.Sprintf("Allows you to delete roles from the organization with id %s", organizationId),
+	}
+	addRolesPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:add_roles", organizationId),
+		Description: fmt.Sprintf("Allows you to add roles to users in the organization with id %s", organizationId),
+	}
 	removeRolesPerm := auth.Permission{
 		Name:        fmt.Sprintf("org%s:remove_roles", organizationId),
-		Description: fmt.Sprintf("Allows you to remove roles from the organization with id %s", organizationId),
+		Description: fmt.Sprintf("Allows you to remove roles from users in the organization with id %s", organizationId),
 	}
 
 	orgMemberPermissions := []auth.Permission{
 		readPerm,
 	}
-	orgOwnerPermissions := append(orgMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm, addRolesPerm, editRolesPerm, removeRolesPerm)
+	orgOwnerPermissions := append(orgMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm, createRolesPerm, editRolesPerm, deleteRolesPerm, addRolesPerm, removeRolesPerm)
 
 	// Because the owner role has all permissions, we only need to call CreatePermissions once
 	err = auth.CreatePermissions(orgOwnerPermissions)

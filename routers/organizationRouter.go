@@ -343,13 +343,13 @@ func (handler *organizationHandler) AddOrganizationRole(writer http.ResponseWrit
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
-	addRolesPerm := fmt.Sprintf("%s:add_roles", orgPrefix)
-	canAddRoles, err := auth.HasPermission(userId, addRolesPerm)
+	creatRolesPerm := fmt.Sprintf("%s:create_roles", orgPrefix)
+	canCreateRoles, err := auth.HasPermission(userId, creatRolesPerm)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
-	if !canAddRoles {
+	if !canCreateRoles {
 		http.Error(writer, fmt.Sprintf("User does not have permission to add roles to organization with id: %s", organizationId), http.StatusForbidden)
 		return
 	}
@@ -463,7 +463,6 @@ func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseW
 
 	roleName = fmt.Sprintf("%s:%s", orgPrefix, roleName)
 	auth.UpdateRole(roleId, roleName, roleDescription)
-	// TODO: update permissions
 	currentRolePermissions, err := auth.GetRolePermissions(roleId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get role permissions for role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
@@ -514,32 +513,73 @@ func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseW
 }
 
 func (handler *organizationHandler) DeleteOrganizationRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can delete roles in organization (posisbly with middleware)
-	// TODO: Delete role from database
-	// TODO: send back 204
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	roleId := params["roleId"]
+	if roleId == "" {
+		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	deleteRolesPerm := fmt.Sprintf("org%s:delete_roles", organizationId)
+	canDeleteRoles, err := auth.HasPermission(userId, deleteRolesPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canDeleteRoles {
+		http.Error(writer, fmt.Sprintf("User does not have permission to edit roles to organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+	err = auth.DeleteRole(roleId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to delete role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *organizationHandler) GetOrganizationRolePrivileges(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request is apart of organization (posisbly with middleware)
-	// TODO: Get privileges by organization ID and role ID
-	// TODO: Return role privileges with status code 200
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	roleId := params["roleId"]
+	if roleId == "" {
+		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readRolesPerm := fmt.Sprintf("org%s:read_roles", organizationId)
+	canReadRoles, err := auth.HasPermission(userId, readRolesPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadRoles {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read roles to organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	permissions, err := auth.GetRolePermissions(roleId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get permissions for role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(permissions)
 }
 
 func (handler *organizationHandler) AddMemberToRole(writer http.ResponseWriter, request *http.Request) {
