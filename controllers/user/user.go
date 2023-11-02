@@ -187,6 +187,9 @@ func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string
 		}
 	}
 
+	if len(orgIds) == 0 {
+		return &[]organization.Organization{}, nil
+	}
 	query, args, err := sqlx.In(`SELECT * FROM Organizations WHERE id IN (?)`, orgIds)
 	if err != nil {
 		return nil, err
