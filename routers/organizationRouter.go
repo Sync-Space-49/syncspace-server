@@ -347,15 +347,38 @@ func (handler *organizationHandler) AddOrganizationRole(writer http.ResponseWrit
 }
 
 func (handler *organizationHandler) GetOrganizationRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request is apart of organization (posisbly with middleware)
-	// TODO: Get role by organization ID and role ID
-	// TODO: Return role with status code 200
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	roleId := params["roleId"]
+	if roleId == "" {
+		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+	role, err := auth.GetRole(roleId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get role for organization %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(role)
 }
 
 func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseWriter, request *http.Request) {

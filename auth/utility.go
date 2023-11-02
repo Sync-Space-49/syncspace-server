@@ -365,6 +365,40 @@ func GetRoles(filter *string) (*[]Role, error) {
 	return &roles, nil
 }
 
+func GetRole(roleId string) (*Role, error) {
+	cfg, err := config.Get()
+	if err != nil {
+		return nil, err
+	}
+	managementToken, err := GetManagementToken()
+	if err != nil {
+		return nil, err
+	}
+	method := "GET"
+	url := fmt.Sprintf("%sapi/v2/roles/%s", cfg.Auth0.Domain, roleId)
+	req, _ := http.NewRequest(method, url, nil)
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get role: %s", string(body))
+	}
+
+	var role Role
+	err = json.Unmarshal(body, &role)
+	if err != nil {
+		return nil, err
+	}
+	return &role, nil
+}
+
 func GetRolePermissions(roleId string) (*[]Permission, error) {
 	cfg, err := config.Get()
 	if err != nil {
