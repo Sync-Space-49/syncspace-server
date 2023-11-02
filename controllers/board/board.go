@@ -3,6 +3,7 @@ package board
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 
@@ -120,5 +121,44 @@ func (c *Controller) InitializeBoard(ownerId string, boardId string, orgId strin
 	if err != nil {
 		return fmt.Errorf("failed to add member role to user: %w", err)
 	}
+	return nil
+}
+
+func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId string, title string, isPrivate bool, ownerId string, previousOwnerId string) error {
+	board, err := c.GetBoardById(ctx, boardId)
+	if err != nil {
+		return err
+	}
+	if title == "" {
+		title = board.Title
+	}
+	if ownerId == "" {
+		ownerId = board.OwnerId
+	}
+	modified_at := time.Now().UTC()
+	_, err = c.db.DB.ExecContext(ctx, `
+		UPDATE Boards SET title=$1, is_private=$2, owner_id=$3, modified_at=$4 WHERE id=$5;
+	`, title, isPrivate, ownerId, modified_at, boardId)
+	if err != nil {
+		return err
+	}
+
+	boardOwnerRoleName := fmt.Sprintf("org%sboard:%s:owner", orgId, boardId)
+	boardOwnerRoles, err := auth.GetRoles(&boardOwnerRoleName)
+	if err != nil {
+		return err
+	}
+	if len(*boardOwnerRoles) == 0 {
+		return fmt.Errorf("no roles found for organization %s", boardOwnerRoles)
+	}
+	err = auth.AddUserToRole(ownerId, (*boardOwnerRoles)[0].Id)
+	if err != nil {
+		return err
+	}
+	err = auth.RemoveUserFromRole(previousOwnerId, (*boardOwnerRoles)[0].Id)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
