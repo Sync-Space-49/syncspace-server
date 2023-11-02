@@ -250,16 +250,16 @@ func (handler *organizationHandler) AddMemberToOrganization(writer http.Response
 	addUsersPerm := fmt.Sprintf("org%s:add_members", organizationId)
 	canAddUsers, err := auth.HasPermission(signedInUserId, addUsersPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canAddUsers {
-		http.Error(writer, fmt.Sprintf("User does not have permission to add users to organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	err = handler.controller.AddMember(userId, organizationId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get users in org with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to add user with id %s to org with id %s: %s", userId, organizationId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
@@ -284,17 +284,17 @@ func (handler *organizationHandler) RemoveMemberFromOrganization(writer http.Res
 	removeUsersPerm := fmt.Sprintf("org%s:remove_members", organizationId)
 	canRemoveUsers, err := auth.HasPermission(userId, removeUsersPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canRemoveUsers {
-		http.Error(writer, fmt.Sprintf("User does not have permission to remove users from organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to remove users from organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
 	err = handler.controller.RemoveMember(memberId, organizationId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get users in org with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to remove user with id %s from org with id %s: %s", memberId, organizationId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
@@ -315,11 +315,11 @@ func (handler *organizationHandler) GetOrganizationRoles(writer http.ResponseWri
 	readOrgPerm := fmt.Sprintf("%s:read", orgRolePrefix)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	roles, err := auth.GetRoles(&orgRolePrefix)
@@ -350,18 +350,18 @@ func (handler *organizationHandler) AddOrganizationRole(writer http.ResponseWrit
 		return
 	}
 	if !canCreateRoles {
-		http.Error(writer, fmt.Sprintf("User does not have permission to add roles to organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
 	roleName := request.FormValue("name")
 	if roleName == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		http.Error(writer, "No name Found", http.StatusBadRequest)
 		return
 	}
 	roleDescription := request.FormValue("description")
 	if roleDescription == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
+		http.Error(writer, "No description Found", http.StatusBadRequest)
 		return
 	}
 	permissionIds := request.Form["permission_ids"]
@@ -374,7 +374,7 @@ func (handler *organizationHandler) AddOrganizationRole(writer http.ResponseWrit
 	auth.CreateRole(roleName, roleDescription)
 	role, err := auth.GetRoles(&roleName)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get role %s: %s", roleName, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get role with query string %s: %s", roleName, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	err = auth.AddPermissionsToRole((*role)[0].Id, permissionIds)
@@ -405,11 +405,11 @@ func (handler *organizationHandler) GetOrganizationRole(writer http.ResponseWrit
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -442,11 +442,11 @@ func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseW
 	editRolesPerm := fmt.Sprintf("%s:edit_roles", orgPrefix)
 	canEditRoles, err := auth.HasPermission(userId, editRolesPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canEditRoles {
-		http.Error(writer, fmt.Sprintf("User does not have permission to edit roles to organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to edit roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -485,7 +485,7 @@ func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseW
 	}
 	err = auth.AddPermissionsToRole(roleId, addPermissionNames)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add permissions to role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to add permissions %v to role %s: %s", addPermissionNames, roleId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
@@ -504,7 +504,7 @@ func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseW
 	}
 	err = auth.RemovePermissionsFromRole(roleId, deletePermissionIdNames)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to remove permissions from role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to remove permissions %v from role %s: %s", deletePermissionIdNames, roleId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
@@ -530,11 +530,11 @@ func (handler *organizationHandler) DeleteOrganizationRole(writer http.ResponseW
 	deleteRolesPerm := fmt.Sprintf("org%s:delete_roles", organizationId)
 	canDeleteRoles, err := auth.HasPermission(userId, deleteRolesPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canDeleteRoles {
-		http.Error(writer, fmt.Sprintf("User does not have permission to edit roles to organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to edit roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	err = auth.DeleteRole(roleId)
@@ -564,11 +564,11 @@ func (handler *organizationHandler) GetOrganizationRolePrivileges(writer http.Re
 	readRolesPerm := fmt.Sprintf("org%s:read_roles", organizationId)
 	canReadRoles, err := auth.HasPermission(userId, readRolesPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canReadRoles {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read roles to organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -604,11 +604,11 @@ func (handler *organizationHandler) AddMemberToRole(writer http.ResponseWriter, 
 	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
 	canReadOrg, err := auth.HasPermission(memberId, readOrgPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", memberId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User you trying to give role to (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User you're trying to give role to (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -617,18 +617,18 @@ func (handler *organizationHandler) AddMemberToRole(writer http.ResponseWriter, 
 	addMemberToSpecificRole := fmt.Sprintf("org%s:add_role:%s", organizationId, roleId)
 	canAddMemberToSpecificRole, err := auth.HasPermission(userId, addMemberToSpecificRole)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canAddMemberToSpecificRole {
 		addToRolesPerm := fmt.Sprintf("%s:add_roles", orgPrefix)
 		canAddToRoles, err := auth.HasPermission(userId, addToRolesPerm)
 		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+			http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 			return
 		}
 		if !canAddToRoles {
-			http.Error(writer, fmt.Sprintf("User does not have permission to add roles to organization with id: %s", organizationId), http.StatusForbidden)
+			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 			return
 		}
 	}
@@ -664,11 +664,11 @@ func (handler *organizationHandler) RemoveMemberFromRole(writer http.ResponseWri
 	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
 	canReadOrg, err := auth.HasPermission(memberId, readOrgPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", memberId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User you trying to remove role from (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User you're trying to remove role from (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -677,18 +677,18 @@ func (handler *organizationHandler) RemoveMemberFromRole(writer http.ResponseWri
 	removeMemberFromSpecificRole := fmt.Sprintf("org%s:remove_role:%s", organizationId, roleId)
 	canRemoveMemberFromSpecificRole, err := auth.HasPermission(userId, removeMemberFromSpecificRole)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canRemoveMemberFromSpecificRole {
 		removeFromRolesPerm := fmt.Sprintf("%s:add_roles", orgPrefix)
 		canRemoveFromRoles, err := auth.HasPermission(userId, removeFromRolesPerm)
 		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+			http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 			return
 		}
 		if !canRemoveFromRoles {
-			http.Error(writer, fmt.Sprintf("User does not have permission to add roles to organization with id: %s", organizationId), http.StatusForbidden)
+			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 			return
 		}
 	}
