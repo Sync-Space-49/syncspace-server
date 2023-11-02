@@ -2,6 +2,7 @@ package routers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -24,9 +25,13 @@ func NewAPI(cfg *config.Config, db *db.DB) http.Handler {
 	})
 
 	router := mux.NewRouter()
+	fmt.Println("TESTING HIT B")
 	router.PathPrefix(usersPrefix).Handler(registerUserRoutes(cfg, db))
+	fmt.Println("TESTING HIT C")
 	router.PathPrefix(organizationsPrefix).Handler(registerOrganizationRoutes(cfg, db))
+	fmt.Println("TESTING HIT D")
 	router.PathPrefix(boardsPrefix).Handler(registerBoardRoutes(cfg, db))
+	fmt.Println("TESTING HIT E")
 
 	// send hello world as json in temp route
 	router.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {

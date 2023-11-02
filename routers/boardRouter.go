@@ -30,52 +30,54 @@ func registerBoardRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.GetBoard).Methods("GET")
 
 	// Edit/replace info about a list based on params
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.UpdateList).Methods("PUT")
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.UpdateList).Methods("PUT")
 
-	// Delete a list from a board (including it's cards)
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.DeleteList).Methods("DELETE")
+	// // Delete a list from a board (including it's cards)
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.DeleteList).Methods("DELETE")
 
-	// Edit/replace info about a card based on params
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{CardId}", organizationsPrefix, boardsPrefix), handler.UpdateCard).Methods("PUT")
+	// // Edit/replace info about a card based on params
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{CardId}", organizationsPrefix, boardsPrefix), handler.UpdateCard).Methods("PUT")
 
-	// Grab all cards assigned to a user for a specific board
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{BoardMemberId}/assigned", organizationsPrefix, boardsPrefix), handler.GetAssignedCards).Methods("POST")
+	// // Grab all cards assigned to a user for a specific board
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{BoardMemberId}/assigned", organizationsPrefix, boardsPrefix), handler.GetAssignedCards).Methods("POST")
 
-	// Grab all cards assigned to a user for all boards
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardMemberId}/assigned", organizationsPrefix, boardsPrefix), handler.GetAllAssignedCards).Methods("POST")
+	// // Grab all cards assigned to a user for all boards
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardMemberId}/assigned", organizationsPrefix, boardsPrefix), handler.GetAllAssignedCards).Methods("POST")
 
-	// Assign a card to a user
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{ListId}/{CardId}/{BoardMemberId}", organizationsPrefix, boardsPrefix), handler.AssignCardToUser).Methods("POST")
+	// // Assign a card to a user
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{ListId}/{CardId}/{BoardMemberId}", organizationsPrefix, boardsPrefix), handler.AssignCardToUser).Methods("POST")
 
-	// Unassign a card from a user
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{ListId}/{CardId}/{BoardMemberId}", organizationsPrefix, boardsPrefix), handler.UnassignCardFromUser).Methods("DELETE")
+	// // Unassign a card from a user
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{ListId}/{CardId}/{BoardMemberId}", organizationsPrefix, boardsPrefix), handler.UnassignCardFromUser).Methods("DELETE")
 
-	// add a tag to a board to use on tags
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/tag", organizationsPrefix, boardsPrefix), handler.CreateTag).Methods("POST")
+	// // add a tag to a board to use on tags
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/tag", organizationsPrefix, boardsPrefix), handler.CreateTag).Methods("POST")
 
-	// delete a tag from a board
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/tag/{TagID}", organizationsPrefix, boardsPrefix), handler.DeleteTag).Methods("DELETE")
+	// // delete a tag from a board
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/tag/{TagID}", organizationsPrefix, boardsPrefix), handler.DeleteTag).Methods("DELETE")
 
-	// add a tag to a card
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardID}/{ListID}/{CardID}/{TagID}", organizationsPrefix, boardsPrefix), handler.AddTagToCard).Methods("POST")
+	// // add a tag to a card
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardID}/{ListID}/{CardID}/{TagID}", organizationsPrefix, boardsPrefix), handler.AddTagToCard).Methods("POST")
 
-	// delete a tag from a card
-	handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardID}/{ListID}/{CardID}/{TagID}", organizationsPrefix, boardsPrefix), handler.AddTagToCard).Methods("DELETE")
+	// // delete a tag from a card
+	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardID}/{ListID}/{CardID}/{TagID}", organizationsPrefix, boardsPrefix), handler.AddTagToCard).Methods("DELETE")
 
 	// TODO: Update 'list' methods to 'stack' and 'panel'
-	handler.router.Handle(boardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
-	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
+
+	handler.router.Handle("/api/organizations/{organizationId}/boards", auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
+	handler.router.Handle("/api/organizations/{organizationId}/boards/{boardId}", auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
-
+	fmt.Println("Returning boards router...")
 	return handler.router
 }
 
 func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *http.Request) {
+	fmt.Print("TESTING HIT A")
 	title := request.FormValue("title")
 	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
 	params := mux.Vars(request)
-	orgId := params["OrganizationId"]
+	orgId := params["organizationId"]
 	if title == "" {
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
@@ -101,6 +103,7 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 }
 
 func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.Request) {
+	fmt.Println("Testing Hit GetBoard")
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {
@@ -150,46 +153,46 @@ func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *ht
 
 }
 
-func (handler *boardHandler) UpdateList(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) UpdateList(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) DeleteList(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) DeleteList(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) GetAssignedCards(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) GetAssignedCards(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) GetAllAssignedCards(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) GetAllAssignedCards(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) CreateTag(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) CreateTag(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) DeleteTag(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) DeleteTag(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) AddTagToCard(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) AddTagToCard(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
 
-func (handler *boardHandler) RemoveTagFromCard(writer http.ResponseWriter, request *http.Request) {
+// func (handler *boardHandler) RemoveTagFromCard(writer http.ResponseWriter, request *http.Request) {
 
-}
+// }
