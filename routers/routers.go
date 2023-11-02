@@ -2,7 +2,6 @@ package routers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -25,9 +24,7 @@ func NewAPI(cfg *config.Config, db *db.DB) http.Handler {
 	})
 
 	router := mux.NewRouter()
-	fmt.Println("registering userRouter...")
 	router.PathPrefix(usersPrefix).Handler(registerUserRoutes(cfg, db))
-	fmt.Println("registering orgRouter...")
 	// orgRouter := router.PathPrefix()
 	router.PathPrefix(organizationsPrefix).Handler(registerOrganizationRoutes(router, cfg, db))
 	// fmt.Println(router)

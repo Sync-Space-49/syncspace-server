@@ -68,12 +68,10 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle("/api/organizations/{organizationId}/boards/{boardId}", auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
-	fmt.Println("Returning boards router...")
 	return handler.router
 }
 
 func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *http.Request) {
-	fmt.Print("TESTING HIT A")
 	title := request.FormValue("title")
 	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
 	params := mux.Vars(request)
@@ -103,7 +101,6 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 }
 
 func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.Request) {
-	fmt.Println("Testing Hit GetBoard")
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {

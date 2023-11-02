@@ -44,7 +44,6 @@ func registerOrganizationRoutes(parentRouter *mux.Router, cfg *config.Config, db
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges/{privilegeId}", organizationsPrefix), handler.RemoveOrganizationRolePrivilege).Methods("DELETE")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.AddMemberToRole).Methods("POST")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.RemoveMemberFromRole).Methods("DELETE")
-	fmt.Println("registering boardRouter...")
 	handler.router.PathPrefix("{organizationId}/boards").Handler(registerBoardRoutes(handler.router, cfg, db))
 	return handler.router
 }
@@ -77,7 +76,6 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 }
 
 func (handler *organizationHandler) GetOrganization(writer http.ResponseWriter, request *http.Request) {
-	fmt.Println("Testing Hit GetOrganization")
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {
