@@ -583,25 +583,63 @@ func (handler *organizationHandler) GetOrganizationRolePrivileges(writer http.Re
 }
 
 func (handler *organizationHandler) AddMemberToRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// memberId, err := strconv.Atoi(params["memberId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Member ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can add members to role in organization (posisbly with middleware)
-	// TODO: Add member to role
-	// TODO: Return with status code 204
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	roleId := params["roleId"]
+	if roleId == "" {
+		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
+		return
+	}
+	memberId := params["memberId"]
+	if memberId == "" {
+		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
+		return
+	}
+
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
+	canReadOrg, err := auth.HasPermission(memberId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User you trying to give role to (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	addMemberToSpecificRole := fmt.Sprintf("org%s:add_role:%s", organizationId, roleId)
+	canAddMemberToSpecificRole, err := auth.HasPermission(userId, addMemberToSpecificRole)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canAddMemberToSpecificRole {
+		addToRolesPerm := fmt.Sprintf("%s:add_roles", orgPrefix)
+		canAddToRoles, err := auth.HasPermission(userId, addToRolesPerm)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if !canAddToRoles {
+			http.Error(writer, fmt.Sprintf("User does not have permission to add roles to organization with id: %s", organizationId), http.StatusForbidden)
+			return
+		}
+	}
+
+	err = auth.AddUserToRole(memberId, roleId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to add member %s to role %s: %s", memberId, roleId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *organizationHandler) RemoveMemberFromRole(writer http.ResponseWriter, request *http.Request) {
