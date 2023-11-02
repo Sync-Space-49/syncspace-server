@@ -668,7 +668,7 @@ func (handler *organizationHandler) RemoveMemberFromRole(writer http.ResponseWri
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User you trying to give role to (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User you trying to remove role from (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
 		return
 	}
 
