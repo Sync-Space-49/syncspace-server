@@ -134,6 +134,7 @@ func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId 
 	}
 	if ownerId == "" {
 		ownerId = board.OwnerId
+		// fmt.Printf("2 ownerId: %s", ownerId)
 	}
 	modified_at := time.Now().UTC()
 	_, err = c.db.DB.ExecContext(ctx, `
@@ -143,7 +144,8 @@ func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId 
 		return err
 	}
 
-	boardOwnerRoleName := fmt.Sprintf("org%sboard:%s:owner", orgId, boardId)
+	boardOwnerRoleName := fmt.Sprintf("org%s:board%s:owner", orgId, boardId)
+	// fmt.Printf("org%s:board%s:owner", orgId, boardId)
 	boardOwnerRoles, err := auth.GetRoles(&boardOwnerRoleName)
 	if err != nil {
 		return err
@@ -151,11 +153,13 @@ func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId 
 	if len(*boardOwnerRoles) == 0 {
 		return fmt.Errorf("no roles found for organization %s", boardOwnerRoles)
 	}
-	err = auth.AddUserToRole(ownerId, (*boardOwnerRoles)[0].Id)
+	err = auth.RemoveUserFromRole(previousOwnerId, (*boardOwnerRoles)[0].Id)
+	// fmt.Printf("org%s:board%s:owner removed from user %s", orgId, boardId, previousOwnerId)
 	if err != nil {
 		return err
 	}
-	err = auth.RemoveUserFromRole(previousOwnerId, (*boardOwnerRoles)[0].Id)
+	err = auth.AddUserToRole(ownerId, (*boardOwnerRoles)[0].Id)
+	// fmt.Printf("org%s:board%s:owner added to user %s", orgId, boardId, ownerId)
 	if err != nil {
 		return err
 	}

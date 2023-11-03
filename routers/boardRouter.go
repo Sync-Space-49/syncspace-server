@@ -149,9 +149,10 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	boardId := params["boardId"]
-	ownerId := params["ownerId"]
 
 	title := request.FormValue("title")
+	ownerId := request.FormValue("ownerId")
+	// fmt.Printf("ownerId: %s", ownerId)
 
 	isPrivateStr := request.FormValue("isPrivate")
 	isPrivate, err := strconv.ParseBool(isPrivateStr)
@@ -162,6 +163,8 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
+	// fmt.Printf("1 userId: %s", userId)
+
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
 	updateBoardPerm := fmt.Sprintf("org%s:board%s:update", organizationId, boardId)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
