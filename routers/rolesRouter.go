@@ -23,16 +23,16 @@ func registerRoleRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 		router: parentRouter.NewRoute().Subrouter(),
 	}
 
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.GetOrganizationRoles).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/permissions", organizationsPrefix), handler.GetOrganizationPermissions).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.CreateRole).Methods("POST")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.GetRole).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.UpdateRole).Methods("PUT")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.DeleteRole).Methods("DELETE")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/permissions", organizationsPrefix), handler.GetRolePermissions).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members", organizationsPrefix), handler.GetMembersWithRole).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members/{memberId}", organizationsPrefix), handler.AddMemberToRole).Methods("POST")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members/{memberId}", organizationsPrefix), handler.RemoveMemberFromRole).Methods("DELETE")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganizationRoles))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/permissions", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganizationPermissions))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateRole))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetRole))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateRole))).Methods("PUT")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteRole))).Methods("DELETE")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/permissions", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetRolePermissions))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetMembersWithRole))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToRole))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromRole))).Methods("DELETE")
 
 	return handler.router
 }
