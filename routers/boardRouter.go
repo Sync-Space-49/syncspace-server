@@ -68,6 +68,11 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle("/api/organizations/{organizationId}/boards/{boardId}", auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
+
+	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/members", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoardMembers))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}/members", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToBoard))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}/members/{memberId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromBoard))).Methods("DELETE")
+
 	return handler.router
 }
 
@@ -230,6 +235,90 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
 
+}
+
+func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	boardId := params["boardId"]
+	if boardId == "" {
+		http.Error(writer, "No Board ID Found", http.StatusBadRequest)
+		return
+	}
+	memberId := request.FormValue("user_id")
+	if memberId == "" {
+		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	addUsersPerm := fmt.Sprintf("org%s:board%s:add_members", organizationId, boardId)
+	canAddUsers, err := auth.HasPermission(userId, addUsersPerm)
+
+	// fmt.Println("addUsersPerm: ", addUsersPerm)
+	// fmt.Println("canAddcanAddUsers: ", canAddUsers)
+
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canAddUsers {
+		http.Error(writer, fmt.Sprintf("User does not have permission to add users to board with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	err = handler.controller.AddMemberToBoard(memberId, organizationId, boardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get users in board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	boardId := params["boardId"]
+	if boardId == "" {
+		http.Error(writer, "No Board ID Found", http.StatusBadRequest)
+		return
+	}
+	memberId := params["memberId"]
+	if memberId == "" {
+		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	removeUsersPerm := fmt.Sprintf("org%s:board%s:remove_members", organizationId, boardId)
+	canRemoveUsers, err := auth.HasPermission(userId, removeUsersPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canRemoveUsers {
+		http.Error(writer, fmt.Sprintf("User does not have permission to remove users from board with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+	// fmt.Println("hit testing a on member: ", memberId)
+	err = handler.controller.RemoveMemberFromBoard(memberId, organizationId, boardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get users in board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 // func (handler *boardHandler) UpdateList(writer http.ResponseWriter, request *http.Request) {

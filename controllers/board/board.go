@@ -178,13 +178,13 @@ func (c *Controller) DeleteBoardById(ctx context.Context, boardId string) error 
 }
 
 func (c *Controller) AddMemberToBoard(userId string, orgId string, boardId string) error {
-	boardOwnerRoleName := fmt.Sprintf("org%s:board%s:owner", orgId, boardId)
+	boardMemberRoleName := fmt.Sprintf("org%s:board%s:member", orgId, boardId)
 	// fmt.Printf("org%s:board%s:owner", orgId, boardId)
-	boardOwnerRoles, err := auth.GetRoles(&boardOwnerRoleName)
+	boardMemberRoles, err := auth.GetRoles(&boardMemberRoleName)
 	if err != nil {
 		return err
 	}
-	err = auth.AddUserToRole(userId, (*boardOwnerRoles)[0].Id)
+	err = auth.AddUserToRole(userId, (*boardMemberRoles)[0].Id)
 	if err != nil {
 		return err
 	}
@@ -194,6 +194,7 @@ func (c *Controller) AddMemberToBoard(userId string, orgId string, boardId strin
 func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId string) error {
 	boardRolePrefix := fmt.Sprintf("org%s:board%s:", orgId, boardId)
 	boardRoles, err := auth.GetRoles(&boardRolePrefix)
+	// fmt.Printf("boardRoles %s", boardRoles)
 	if err != nil {
 		return err
 	}
