@@ -35,11 +35,12 @@ func registerOrganizationRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToOrganization))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromOrganization))).Methods("DELETE")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.GetOrganizationRoles).Methods("GET")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/rolespermissions", organizationsPrefix), handler.GetOrganizationPermissions).Methods("GET")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.CreateOrganizationRole).Methods("POST")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.GetOrganizationRole).Methods("GET")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.UpdateOrganizationRole).Methods("PUT")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.DeleteOrganizationRole).Methods("DELETE")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges", organizationsPrefix), handler.GetOrganizationRolePrivileges).Methods("GET")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/permissions", organizationsPrefix), handler.GetOrganizationRolePrivileges).Methods("GET")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.AddMemberToRole).Methods("POST")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.RemoveMemberFromRole).Methods("DELETE")
 
@@ -329,6 +330,46 @@ func (handler *organizationHandler) GetOrganizationRoles(writer http.ResponseWri
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(roles)
+}
+
+func (handler *organizationHandler) GetOrganizationPermissions(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	orgRolePrefix := fmt.Sprintf("org%s", organizationId)
+	readOrgPerm := fmt.Sprintf("%s:read", orgRolePrefix)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
+		return
+	}
+	roles, err := auth.GetRoles(&orgRolePrefix)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get roles for organization %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	permissions := make([]auth.Permission, 0)
+	for _, role := range *roles {
+		rolePermissions, err := auth.GetRolePermissions(role.Id)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to get permissions for role %s: %s", role.Id, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		permissions = append(permissions, *rolePermissions...)
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(permissions)
 }
 
 func (handler *organizationHandler) CreateOrganizationRole(writer http.ResponseWriter, request *http.Request) {
