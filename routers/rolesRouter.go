@@ -140,7 +140,7 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 		http.Error(writer, "No description Found", http.StatusBadRequest)
 		return
 	}
-	permissionNames := request.Form["permission_ids"]
+	permissionNames := request.Form["permission_names"]
 	if len(permissionNames) == 0 {
 		http.Error(writer, "No Permission IDs Found", http.StatusBadRequest)
 		return
