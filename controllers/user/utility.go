@@ -53,22 +53,18 @@ func GetUser(userId string) (*User, error) {
 	return &user, nil
 }
 
-func GetUsersWithRole(roleName string) (*[]User, error) {
+func GetUsersWithRole(roleId string) (*[]User, error) {
 	cfg, err := config.Get()
 	if err != nil {
 		return nil, err
 	}
-
 	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get maintenance token: %w", err)
 	}
-	roles, err := auth.GetRoles(&roleName)
-	if err != nil {
-		return nil, err
-	}
+
 	method := "GET"
-	url := fmt.Sprintf("%sapi/v2/roles/%s/users", cfg.Auth0.Domain, (*roles)[0].Id)
+	url := fmt.Sprintf("%sapi/v2/roles/%s/users", cfg.Auth0.Domain, roleId)
 	client := &http.Client{}
 
 	req, err := http.NewRequest(method, url, nil)
