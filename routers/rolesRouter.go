@@ -24,13 +24,13 @@ func registerRoleRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 	}
 
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.GetOrganizationRoles).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/rolespermissions", organizationsPrefix), handler.GetOrganizationPermissions).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.CreateOrganizationRole).Methods("POST")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.GetOrganizationRole).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.UpdateOrganizationRole).Methods("PUT")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.DeleteOrganizationRole).Methods("DELETE")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/permissions", organizationsPrefix), handler.GetOrganizationRolePermissions).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members", organizationsPrefix), handler.GetUsersWithRole).Methods("GET")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/permissions", organizationsPrefix), handler.GetOrganizationPermissions).Methods("GET")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.CreateRole).Methods("POST")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.GetRole).Methods("GET")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.UpdateRole).Methods("PUT")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.DeleteRole).Methods("DELETE")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/permissions", organizationsPrefix), handler.GetRolePermissions).Methods("GET")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members", organizationsPrefix), handler.GetMembersWithRole).Methods("GET")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members/{memberId}", organizationsPrefix), handler.AddMemberToRole).Methods("POST")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members/{memberId}", organizationsPrefix), handler.RemoveMemberFromRole).Methods("DELETE")
 
@@ -108,7 +108,7 @@ func (handler *roleHandler) GetOrganizationPermissions(writer http.ResponseWrite
 	json.NewEncoder(writer).Encode(permissions)
 }
 
-func (handler *roleHandler) CreateOrganizationRole(writer http.ResponseWriter, request *http.Request) {
+func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {
@@ -181,7 +181,7 @@ func (handler *roleHandler) CreateOrganizationRole(writer http.ResponseWriter, r
 	json.NewEncoder(writer).Encode(role)
 }
 
-func (handler *roleHandler) GetOrganizationRole(writer http.ResponseWriter, request *http.Request) {
+func (handler *roleHandler) GetRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {
@@ -217,7 +217,7 @@ func (handler *roleHandler) GetOrganizationRole(writer http.ResponseWriter, requ
 	json.NewEncoder(writer).Encode(role)
 }
 
-func (handler *roleHandler) UpdateOrganizationRole(writer http.ResponseWriter, request *http.Request) {
+func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {
@@ -308,7 +308,7 @@ func (handler *roleHandler) UpdateOrganizationRole(writer http.ResponseWriter, r
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-func (handler *roleHandler) DeleteOrganizationRole(writer http.ResponseWriter, request *http.Request) {
+func (handler *roleHandler) DeleteRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {
@@ -342,7 +342,7 @@ func (handler *roleHandler) DeleteOrganizationRole(writer http.ResponseWriter, r
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-func (handler *roleHandler) GetOrganizationRolePermissions(writer http.ResponseWriter, request *http.Request) {
+func (handler *roleHandler) GetRolePermissions(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {
@@ -378,7 +378,7 @@ func (handler *roleHandler) GetOrganizationRolePermissions(writer http.ResponseW
 	json.NewEncoder(writer).Encode(permissions)
 }
 
-func (handler *roleHandler) GetUsersWithRole(writer http.ResponseWriter, request *http.Request) {
+func (handler *roleHandler) GetMembersWithRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	roleId := params["roleId"]
