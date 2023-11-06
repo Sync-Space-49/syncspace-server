@@ -26,7 +26,6 @@ func registerOrganizationRoutes(parentRouter *mux.Router, cfg *config.Config, db
 		router:     parentRouter.NewRoute().Subrouter(),
 		controller: organization.NewController(cfg, db),
 	}
-
 	handler.router.Handle(organizationsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateOrganization))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganization))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateOrganization))).Methods("PUT")
@@ -35,7 +34,7 @@ func registerOrganizationRoutes(parentRouter *mux.Router, cfg *config.Config, db
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToOrganization))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromOrganization))).Methods("DELETE")
 	handler.router.PathPrefix("{organizationId}/roles").Handler(registerRoleRoutes(handler.router, cfg, db))
-
+	handler.router.PathPrefix("{organizationId}/boards").Handler(registerBoardRoutes(handler.router, cfg, db))
 	return handler.router
 }
 
