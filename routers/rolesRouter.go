@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/config"
@@ -171,6 +172,12 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 	}
 
 	permissionNames = append(permissionNames, addMemberToSpecificRolePermission.Name, removeMemberFromSpecificRolePermission.Name)
+	for _, permissionName := range permissionNames {
+		if !strings.Contains(permissionName, orgPrefix) {
+			http.Error(writer, fmt.Sprintf("Permission %s does not have org prefix %s (maybe meant for another org?)", permissionName, orgPrefix), http.StatusBadRequest)
+			return
+		}
+	}
 	err = auth.AddPermissionsToRole(roleId, permissionNames)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to add permissions to role %s: %s", roleName, err.Error()), http.StatusInternalServerError)
