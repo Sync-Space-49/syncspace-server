@@ -40,7 +40,7 @@ func registerOrganizationRoutes(cfg *config.Config, db *db.DB) *mux.Router {
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.GetOrganizationRole).Methods("GET")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.UpdateOrganizationRole).Methods("PUT")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.DeleteOrganizationRole).Methods("DELETE")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/permissions", organizationsPrefix), handler.GetOrganizationRolePrivileges).Methods("GET")
+	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/permissions", organizationsPrefix), handler.GetOrganizationRolePermissions).Methods("GET")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.AddMemberToRole).Methods("POST")
 	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.RemoveMemberFromRole).Methods("DELETE")
 
@@ -606,7 +606,7 @@ func (handler *organizationHandler) DeleteOrganizationRole(writer http.ResponseW
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-func (handler *organizationHandler) GetOrganizationRolePrivileges(writer http.ResponseWriter, request *http.Request) {
+func (handler *organizationHandler) GetOrganizationRolePermissions(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	if organizationId == "" {
