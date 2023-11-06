@@ -271,6 +271,12 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 	}
 
 	permissionNames := request.Form["permission_names"]
+	for _, permissionName := range permissionNames {
+		if !strings.Contains(permissionName, orgPrefix) {
+			http.Error(writer, fmt.Sprintf("Permission %s does not have org prefix %s (maybe meant for another org?)", permissionName, orgPrefix), http.StatusBadRequest)
+			return
+		}
+	}
 	addPermissionNames := make([]string, 0)
 	for _, newPermissionName := range permissionNames {
 		isNewPerm := false
