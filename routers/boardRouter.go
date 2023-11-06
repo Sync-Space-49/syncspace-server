@@ -268,7 +268,7 @@ func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, reques
 		return
 	}
 	if !canAddUsers {
-		http.Error(writer, fmt.Sprintf("User does not have permission to add users to board with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User does not have permission to add users to org %s board with id %s", organizationId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -308,7 +308,7 @@ func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, r
 		return
 	}
 	if !canRemoveUsers {
-		http.Error(writer, fmt.Sprintf("User does not have permission to remove users from board with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User does not have permission to add users to org %s board with id %s", organizationId, boardId), http.StatusForbidden)
 		return
 	}
 	// fmt.Println("hit testing a on member: ", memberId)
