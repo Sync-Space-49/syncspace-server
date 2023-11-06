@@ -145,6 +145,44 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	json.NewEncoder(writer).Encode(org)
 }
 
+func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	// fmt.Printf("1 userId: %s", userId)
+
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	deleteBoardPerm := fmt.Sprintf("org%s:board%s:delete", organizationId, boardId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	canDeleteBoard, err := auth.HasPermission(userId, deleteBoardPerm)
+
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read org with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+	if !canDeleteBoard {
+		http.Error(writer, fmt.Sprintf("User does not have permission to delete board with id: %s", boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err = handler.controller.DeleteBoardById(ctx, boardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to delete board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+
+}
+
 func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
@@ -186,15 +224,11 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 	ctx := request.Context()
 	err = handler.controller.UpdateBoardById(ctx, organizationId, boardId, title, isPrivate, ownerId, userId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to update organization with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to update board with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
-
-}
-
-func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *http.Request) {
 
 }
 

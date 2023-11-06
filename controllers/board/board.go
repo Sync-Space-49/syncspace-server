@@ -151,7 +151,7 @@ func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId 
 		return err
 	}
 	if len(*boardOwnerRoles) == 0 {
-		return fmt.Errorf("no roles found for organization %s", boardOwnerRoles)
+		return fmt.Errorf("no roles found for board %s", boardOwnerRoles)
 	}
 	err = auth.RemoveUserFromRole(previousOwnerId, (*boardOwnerRoles)[0].Id)
 	// fmt.Printf("org%s:board%s:owner removed from user %s", orgId, boardId, previousOwnerId)
@@ -164,5 +164,49 @@ func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId 
 		return err
 	}
 
+	return nil
+}
+
+func (c *Controller) DeleteBoardById(ctx context.Context, boardId string) error {
+	_, err := c.db.DB.ExecContext(ctx, `
+		DELETE FROM Boards WHERE id=$1;
+	`, boardId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) AddMemberToBoard(userId string, orgId string, boardId string) error {
+	boardOwnerRoleName := fmt.Sprintf("org%s:board%s:owner", orgId, boardId)
+	// fmt.Printf("org%s:board%s:owner", orgId, boardId)
+	boardOwnerRoles, err := auth.GetRoles(&boardOwnerRoleName)
+	if err != nil {
+		return err
+	}
+	err = auth.AddUserToRole(userId, (*boardOwnerRoles)[0].Id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId string) error {
+	boardRolePrefix := fmt.Sprintf("org%s:board%s:", orgId, boardId)
+	boardRoles, err := auth.GetRoles(&boardRolePrefix)
+	if err != nil {
+		return err
+	}
+	if len(*boardRoles) == 0 {
+		return fmt.Errorf("no roles found for board %s", boardId)
+	}
+	var boardRoleIds []string
+	for _, role := range *boardRoles {
+		boardRoleIds = append(boardRoleIds, role.Id)
+	}
+	err = auth.RemoveUserFromRoles(userId, boardRoleIds)
+	if err != nil {
+		return err
+	}
 	return nil
 }
