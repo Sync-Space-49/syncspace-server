@@ -506,22 +506,24 @@ func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseW
 		return
 	}
 
-	deletePermissionIdNames := make([]string, 0)
+	deletePermissionNames := make([]string, 0)
+	addMemberToRoleName := fmt.Sprintf("org%s:role%s:add_member", organizationId, roleId)
+	removeMemberFromRoleName := fmt.Sprintf("org%s:role%s:remove_member", organizationId, roleId)
 	for _, currentPermissionName := range *currentRolePermissions {
 		isDeletedPerm := true
 		for _, newPermissionName := range permissionNames {
-			if currentPermissionName.Name == newPermissionName {
+			if currentPermissionName.Name == newPermissionName && currentPermissionName.Name != addMemberToRoleName && currentPermissionName.Name != removeMemberFromRoleName {
 				isDeletedPerm = false
 				break
 			}
 		}
 		if isDeletedPerm {
-			deletePermissionIdNames = append(deletePermissionIdNames, currentPermissionName.Name)
+			deletePermissionNames = append(deletePermissionNames, currentPermissionName.Name)
 		}
 	}
-	err = auth.RemovePermissionsFromRole(roleId, deletePermissionIdNames)
+	err = auth.RemovePermissionsFromRole(roleId, deletePermissionNames)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to remove permissions %v from role %s: %s", deletePermissionIdNames, roleId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to remove permissions %v from role %s: %s", deletePermissionNames, roleId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
