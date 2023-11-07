@@ -33,17 +33,7 @@ func registerOrganizationRoutes(parentRouter *mux.Router, cfg *config.Config, db
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganizationMembers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToOrganization))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromOrganization))).Methods("DELETE")
-	// TODO: controller methods below
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.GetOrganizationRoles).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles", organizationsPrefix), handler.AddOrganizationRole).Methods("POST")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.GetOrganizationRole).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.UpdateOrganizationRole).Methods("PUT")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), handler.DeleteOrganizationRole).Methods("DELETE")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges", organizationsPrefix), handler.GetOrganizationRolePrivileges).Methods("GET")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges/{privilegeId}", organizationsPrefix), handler.AddOrganizationRolePrivilege).Methods("POST")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/privileges/{privilegeId}", organizationsPrefix), handler.RemoveOrganizationRolePrivilege).Methods("DELETE")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.AddMemberToRole).Methods("POST")
-	handler.router.HandleFunc(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/{memberId}", organizationsPrefix), handler.RemoveMemberFromRole).Methods("DELETE")
+	handler.router.PathPrefix("{organizationId}/roles").Handler(registerRoleRoutes(handler.router, cfg, db))
 	handler.router.PathPrefix("{organizationId}/boards").Handler(registerBoardRoutes(handler.router, cfg, db))
 	return handler.router
 }
@@ -251,16 +241,16 @@ func (handler *organizationHandler) AddMemberToOrganization(writer http.Response
 	addUsersPerm := fmt.Sprintf("org%s:add_members", organizationId)
 	canAddUsers, err := auth.HasPermission(signedInUserId, addUsersPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canAddUsers {
-		http.Error(writer, fmt.Sprintf("User does not have permission to add users to organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	err = handler.controller.AddMember(userId, organizationId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get users in org with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to add user with id %s to org with id %s: %s", userId, organizationId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
@@ -285,178 +275,19 @@ func (handler *organizationHandler) RemoveMemberFromOrganization(writer http.Res
 	removeUsersPerm := fmt.Sprintf("org%s:remove_members", organizationId)
 	canRemoveUsers, err := auth.HasPermission(userId, removeUsersPerm)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canRemoveUsers {
-		http.Error(writer, fmt.Sprintf("User does not have permission to remove users from organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to remove users from organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
 	err = handler.controller.RemoveMember(memberId, organizationId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get users in org with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to remove user with id %s from org with id %s: %s", memberId, organizationId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
-}
-
-// TODO: below
-func (handler *organizationHandler) GetOrganizationRoles(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request is apart of organization (posisbly with middleware)
-	// TODO: Get roles by organization ID
-	// TODO: Return roles with status code 200
-}
-
-func (handler *organizationHandler) AddOrganizationRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can add roles to organization (posisbly with middleware)
-	// TODO: Add role to organization
-	// TODO: Return role with status code 201
-}
-
-func (handler *organizationHandler) GetOrganizationRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request is apart of organization (posisbly with middleware)
-	// TODO: Get role by organization ID and role ID
-	// TODO: Return role with status code 200
-}
-
-func (handler *organizationHandler) UpdateOrganizationRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can update roles in organization (posisbly with middleware)
-	// TODO: Find what fields are being updated
-	// TODO: Get role by organization ID and role ID
-	// TODO: update role in database
-	// TODO: send back 204
-}
-
-func (handler *organizationHandler) DeleteOrganizationRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can delete roles in organization (posisbly with middleware)
-	// TODO: Delete role from database
-	// TODO: send back 204
-}
-
-func (handler *organizationHandler) GetOrganizationRolePrivileges(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request is apart of organization (posisbly with middleware)
-	// TODO: Get privileges by organization ID and role ID
-	// TODO: Return role privileges with status code 200
-}
-
-func (handler *organizationHandler) AddOrganizationRolePrivilege(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can add privileges to role in organization (posisbly with middleware)
-	// TODO: Add privilege to role
-	// TODO: Return privilege with status code 201
-	// TODO: send back 204
-}
-
-func (handler *organizationHandler) RemoveOrganizationRolePrivilege(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can remove privileges from role in organization (posisbly with middleware)
-	// TODO: Remove privilege from role
-	// TODO: send back 204
-}
-
-func (handler *organizationHandler) AddMemberToRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// memberId, err := strconv.Atoi(params["memberId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Member ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can add members to role in organization (posisbly with middleware)
-	// TODO: Add member to role
-	// TODO: Return with status code 204
-}
-
-func (handler *organizationHandler) RemoveMemberFromRole(writer http.ResponseWriter, request *http.Request) {
-	// params := mux.Vars(request)
-	// organizationId, err := strconv.Atoi(params["organizationId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Organization ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// memberId, err := strconv.Atoi(params["memberId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Member ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// roleId, err := strconv.Atoi(params["roleId"])
-	// if err != nil {
-	// 	http.Error(writer, fmt.Sprintf("Invalid Role ID: %s", err.Error()), http.StatusBadRequest)
-	// 	return
-	// }
-	// TODO: verify user sending request can remove members from role in organization (posisbly with middleware)
-	// TODO: Remove member from role
-	// TODO: Return with status code 204
 }

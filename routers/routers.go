@@ -25,11 +25,7 @@ func NewAPI(cfg *config.Config, db *db.DB) http.Handler {
 
 	router := mux.NewRouter()
 	router.PathPrefix(usersPrefix).Handler(registerUserRoutes(cfg, db))
-	// orgRouter := router.PathPrefix()
 	router.PathPrefix(organizationsPrefix).Handler(registerOrganizationRoutes(router, cfg, db))
-	// fmt.Println(router)
-	// orgRouter.Handler(registerOrganizationRoutes(cfg, db, router))
-	// router.PathPrefix(boardsPrefix).Handler(registerBoardRoutes(orgRouter, cfg, db))
 
 	// send hello world as json in temp route
 	router.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {

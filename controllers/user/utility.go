@@ -53,22 +53,18 @@ func GetUser(userId string) (*User, error) {
 	return &user, nil
 }
 
-func GetUsersWithRole(roleName string) (*[]User, error) {
+func GetUsersWithRole(roleId string) (*[]User, error) {
 	cfg, err := config.Get()
 	if err != nil {
 		return nil, err
 	}
-
 	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get maintenance token: %w", err)
 	}
-	roles, err := auth.GetRoles(&roleName)
-	if err != nil {
-		return nil, err
-	}
+
 	method := "GET"
-	url := fmt.Sprintf("%sapi/v2/roles/%s/users", cfg.Auth0.Domain, (*roles)[0].Id)
+	url := fmt.Sprintf("%sapi/v2/roles/%s/users", cfg.Auth0.Domain, roleId)
 	client := &http.Client{}
 
 	req, err := http.NewRequest(method, url, nil)
@@ -97,6 +93,11 @@ func GetUsersWithRole(roleName string) (*[]User, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if len(usersWithRole) == 0 {
+		return &[]User{}, nil
+	}
+
 	var users []User
 	for _, user := range usersWithRole {
 		user, err := GetUser(user.UserId)
@@ -110,8 +111,13 @@ func GetUsersWithRole(roleName string) (*[]User, error) {
 }
 
 func GetOrgMembers(organizationId string) (*[]User, error) {
-	orgMemberRole := fmt.Sprintf("org%s:member", organizationId)
-	users, err := GetUsersWithRole(orgMemberRole)
+	orgMemberRoleName := fmt.Sprintf("org%s:member", organizationId)
+	roles, err := auth.GetRoles(&orgMemberRoleName)
+	if err != nil {
+		return nil, err
+	}
+	orgMemberRole := (*roles)[0]
+	users, err := GetUsersWithRole(orgMemberRole.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +125,13 @@ func GetOrgMembers(organizationId string) (*[]User, error) {
 }
 
 func GetOrgOwners(organizationId string) (*[]User, error) {
-	orgOwnerRole := fmt.Sprintf("org%s:owner", organizationId)
-	users, err := GetUsersWithRole(orgOwnerRole)
+	orgOwnerRoleName := fmt.Sprintf("org%s:owner", organizationId)
+	roles, err := auth.GetRoles(&orgOwnerRoleName)
+	if err != nil {
+		return nil, err
+	}
+	orgOwnerRole := (*roles)[0]
+	users, err := GetUsersWithRole(orgOwnerRole.Id)
 	if err != nil {
 		return nil, err
 	}
