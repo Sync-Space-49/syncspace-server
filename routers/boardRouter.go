@@ -197,8 +197,7 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 	ownerId := request.FormValue("ownerId")
 	// fmt.Printf("ownerId: %s", ownerId)
 
-	isPrivateStr := request.FormValue("isPrivate")
-	isPrivate, err := strconv.ParseBool(isPrivateStr)
+	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
 		return
