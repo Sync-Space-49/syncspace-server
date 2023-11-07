@@ -32,7 +32,7 @@ func registerRoleRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteRole))).Methods("DELETE")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/permissions", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetRolePermissions))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetMembersWithRole))).Methods("GET")
-	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToRole))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToRole))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/roles/{roleId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromRole))).Methods("DELETE")
 
 	return handler.router
@@ -127,7 +127,7 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 		return
 	}
 	if !canCreateRoles {
-		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 	}
 	permissionNames := request.Form["permission_names"]
 	if len(permissionNames) == 0 {
-		http.Error(writer, "No Permission IDs Found", http.StatusBadRequest)
+		http.Error(writer, "No Permission Names Found", http.StatusBadRequest)
 		return
 	}
 
@@ -290,19 +290,17 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 			addPermissionNames = append(addPermissionNames, newPermissionName)
 		}
 	}
-	err = auth.AddPermissionsToRole(roleId, addPermissionNames)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add permissions %v to role %s: %s", addPermissionNames, roleId, err.Error()), http.StatusInternalServerError)
-		return
-	}
 
 	deletePermissionNames := make([]string, 0)
 	addMemberToRoleName := fmt.Sprintf("org%s:role%s:add_member", organizationId, roleId)
 	removeMemberFromRoleName := fmt.Sprintf("org%s:role%s:remove_member", organizationId, roleId)
 	for _, currentPermissionName := range *currentRolePermissions {
+		if currentPermissionName.Name == addMemberToRoleName || currentPermissionName.Name == removeMemberFromRoleName {
+			continue
+		}
 		isDeletedPerm := true
 		for _, newPermissionName := range permissionNames {
-			if currentPermissionName.Name == newPermissionName && currentPermissionName.Name != addMemberToRoleName && currentPermissionName.Name != removeMemberFromRoleName {
+			if currentPermissionName.Name == newPermissionName {
 				isDeletedPerm = false
 				break
 			}
@@ -310,6 +308,12 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 		if isDeletedPerm {
 			deletePermissionNames = append(deletePermissionNames, currentPermissionName.Name)
 		}
+	}
+
+	err = auth.AddPermissionsToRole(roleId, addPermissionNames)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to add permissions %v to role %s: %s", addPermissionNames, roleId, err.Error()), http.StatusInternalServerError)
+		return
 	}
 	err = auth.RemovePermissionsFromRole(roleId, deletePermissionNames)
 	if err != nil {
@@ -432,7 +436,8 @@ func (handler *roleHandler) AddMemberToRole(writer http.ResponseWriter, request 
 		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
 		return
 	}
-	memberId := params["memberId"]
+
+	memberId := request.FormValue("member_id")
 	if memberId == "" {
 		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
 		return
