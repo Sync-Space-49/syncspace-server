@@ -322,15 +322,19 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 		}
 	}
 
-	err = auth.AddPermissionsToRole(roleId, addPermissionNames)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add permissions %v to role %s: %s", addPermissionNames, roleId, err.Error()), http.StatusInternalServerError)
-		return
+	if len(addPermissionNames) == 0 {
+		err = auth.AddPermissionsToRole(roleId, addPermissionNames)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to add permissions %v to role %s: %s", addPermissionNames, roleId, err.Error()), http.StatusInternalServerError)
+			return
+		}
 	}
-	err = auth.RemovePermissionsFromRole(roleId, deletePermissionNames)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to remove permissions %v from role %s: %s", deletePermissionNames, roleId, err.Error()), http.StatusInternalServerError)
-		return
+	if len(deletePermissionNames) == 0 {
+		err = auth.RemovePermissionsFromRole(roleId, deletePermissionNames)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to remove permissions %v from role %s: %s", deletePermissionNames, roleId, err.Error()), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
