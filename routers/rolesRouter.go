@@ -149,8 +149,9 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 
 	roleName = fmt.Sprintf("%s:%s", orgPrefix, roleName)
 	auth.CreateRole(roleName, roleDescription)
-	role, err := auth.GetRoles(&roleName)
-	roleId := (*role)[0].Id
+	roles, err := auth.GetRoles(&roleName)
+	role := (*roles)[0]
+	roleId := role.Id
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get role with query string %s: %s", roleName, err.Error()), http.StatusInternalServerError)
 		return
@@ -183,6 +184,13 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 		http.Error(writer, fmt.Sprintf("Failed to add permissions to role %s: %s", roleName, err.Error()), http.StatusInternalServerError)
 		return
 	}
+
+	err = auth.AddUserToRole(userId, roleId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to add user %s to role %s: %s", userId, roleId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
 	json.NewEncoder(writer).Encode(role)

@@ -106,8 +106,13 @@ func GetUsersWithRole(roleId string) (*[]User, error) {
 }
 
 func GetOrgMembers(organizationId string) (*[]User, error) {
-	orgMemberRole := fmt.Sprintf("org%s:member", organizationId)
-	users, err := GetUsersWithRole(orgMemberRole)
+	orgMemberRoleName := fmt.Sprintf("org%s:member", organizationId)
+	roles, err := auth.GetRoles(&orgMemberRoleName)
+	if err != nil {
+		return nil, err
+	}
+	orgMemberRole := (*roles)[0]
+	users, err := GetUsersWithRole(orgMemberRole.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +120,13 @@ func GetOrgMembers(organizationId string) (*[]User, error) {
 }
 
 func GetOrgOwners(organizationId string) (*[]User, error) {
-	orgOwnerRole := fmt.Sprintf("org%s:owner", organizationId)
-	users, err := GetUsersWithRole(orgOwnerRole)
+	orgOwnerRoleName := fmt.Sprintf("org%s:owner", organizationId)
+	roles, err := auth.GetRoles(&orgOwnerRoleName)
+	if err != nil {
+		return nil, err
+	}
+	orgOwnerRole := (*roles)[0]
+	users, err := GetUsersWithRole(orgOwnerRole.Id)
 	if err != nil {
 		return nil, err
 	}
