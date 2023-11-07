@@ -251,15 +251,18 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 		return
 	}
 
+	role, err := auth.GetRoleById(roleId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get role for organization %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
+		return
+	}
 	roleName := request.FormValue("name")
 	if roleName == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
-		return
+		roleName = role.Name
 	}
 	roleDescription := request.FormValue("description")
 	if roleDescription == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
-		return
+		roleDescription = role.Description
 	}
 
 	roleName = fmt.Sprintf("%s:%s", orgPrefix, roleName)
