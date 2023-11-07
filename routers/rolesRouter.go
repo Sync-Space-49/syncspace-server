@@ -267,13 +267,14 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 	roleName := request.FormValue("name")
 	if roleName == "" {
 		roleName = role.Name
+	} else {
+		roleName = fmt.Sprintf("%s:%s", orgPrefix, roleName)
 	}
 	roleDescription := request.FormValue("description")
 	if roleDescription == "" {
 		roleDescription = role.Description
 	}
 
-	roleName = fmt.Sprintf("%s:%s", orgPrefix, roleName)
 	auth.UpdateRole(roleId, roleName, roleDescription)
 	currentRolePermissions, err := auth.GetRolePermissions(roleId)
 	if err != nil {
