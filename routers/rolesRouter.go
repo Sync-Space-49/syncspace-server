@@ -275,7 +275,11 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 		roleDescription = role.Description
 	}
 
-	auth.UpdateRole(roleId, roleName, roleDescription)
+	err = auth.UpdateRole(role.Id, roleName, roleDescription)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to update role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
+		return
+	}
 	currentRolePermissions, err := auth.GetRolePermissions(roleId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get role permissions for role %s: %s", roleId, err.Error()), http.StatusInternalServerError)

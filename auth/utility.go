@@ -446,6 +446,7 @@ func UpdateRole(roleId string, roleName string, roleDescription string) error {
 	url := fmt.Sprintf("%sapi/v2/roles/%s", cfg.Auth0.Domain, roleId)
 	payload := strings.NewReader(fmt.Sprintf(`{"name":"%s","description":"%s"}`, roleName, roleDescription))
 	req, _ := http.NewRequest(method, url, payload)
+	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
 
