@@ -93,6 +93,11 @@ func GetUsersWithRole(roleId string) (*[]User, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if len(usersWithRole) == 0 {
+		return &[]User{}, nil
+	}
+
 	var users []User
 	for _, user := range usersWithRole {
 		user, err := GetUser(user.UserId)
