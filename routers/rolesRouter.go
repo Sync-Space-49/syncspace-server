@@ -322,14 +322,14 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 		}
 	}
 
-	if len(addPermissionNames) == 0 {
+	if len(addPermissionNames) > 0 {
 		err = auth.AddPermissionsToRole(roleId, addPermissionNames)
 		if err != nil {
 			http.Error(writer, fmt.Sprintf("Failed to add permissions %v to role %s: %s", addPermissionNames, roleId, err.Error()), http.StatusInternalServerError)
 			return
 		}
 	}
-	if len(deletePermissionNames) == 0 {
+	if len(deletePermissionNames) > 0 {
 		err = auth.RemovePermissionsFromRole(roleId, deletePermissionNames)
 		if err != nil {
 			http.Error(writer, fmt.Sprintf("Failed to remove permissions %v from role %s: %s", deletePermissionNames, roleId, err.Error()), http.StatusInternalServerError)
