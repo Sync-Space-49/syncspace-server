@@ -26,9 +26,9 @@ type userHandler struct {
 	controller *user.Controller
 }
 
-func registerUserRoutes(cfg *config.Config, db *db.DB) *mux.Router {
+func registerUserRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB) *mux.Router {
 	handler := &userHandler{
-		router:     mux.NewRouter(),
+		router:     parentRouter.NewRoute().Subrouter(),
 		controller: user.NewController(cfg, db),
 	}
 
