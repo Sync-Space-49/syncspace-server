@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -88,7 +89,11 @@ func (handler *organizationHandler) GetOrganization(writer http.ResponseWriter, 
 	ctx := request.Context()
 	org, err := handler.controller.GetOrganizationById(ctx, organizationId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get organization: %s", err.Error()), http.StatusInternalServerError)
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No organization found with id %s", organizationId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get organization: %s", err.Error()), http.StatusInternalServerError)
+		}
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
