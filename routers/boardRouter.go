@@ -373,14 +373,14 @@ func (handler *boardHandler) GetPanels(writer http.ResponseWriter, request *http
 	}
 
 	ctx := request.Context()
-	org, err := handler.controller.GetPanelsByBoardId(ctx, boardId)
+	panels, err := handler.controller.GetPanelsByBoardId(ctx, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get panels from board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(org)
+	json.NewEncoder(writer).Encode(panels)
 }
 
 func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.Request) {
@@ -414,7 +414,7 @@ func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.
 	}
 
 	ctx := request.Context()
-	org, err := handler.controller.GetPanelById(ctx, panelId)
+	panel, err := handler.controller.GetPanelById(ctx, panelId)
 	if err != nil {
 		if err.Error() == sql.ErrNoRows.Error() {
 			http.Error(writer, fmt.Sprintf("No panel with id %s found", panelId), http.StatusNotFound)
@@ -425,7 +425,7 @@ func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(org)
+	json.NewEncoder(writer).Encode(panel)
 }
 
 // func (handler *boardHandler) UpdateList(writer http.ResponseWriter, request *http.Request) {
