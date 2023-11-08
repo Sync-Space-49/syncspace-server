@@ -5,22 +5,8 @@ import (
 	"fmt"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
-	"github.com/Sync-Space-49/syncspace-server/config"
-	"github.com/Sync-Space-49/syncspace-server/db"
 	"github.com/google/uuid"
 )
-
-type Controller struct {
-	cfg *config.Config
-	db  *db.DB
-}
-
-func NewController(cfg *config.Config, db *db.DB) *Controller {
-	return &Controller{
-		cfg: cfg,
-		db:  db,
-	}
-}
 
 func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description *string) (*Organization, error) {
 	var query string

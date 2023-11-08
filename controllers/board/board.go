@@ -7,22 +7,8 @@ import (
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 
-	"github.com/Sync-Space-49/syncspace-server/config"
-	"github.com/Sync-Space-49/syncspace-server/db"
 	"github.com/google/uuid"
 )
-
-type Controller struct {
-	cfg *config.Config
-	db  *db.DB
-}
-
-func NewController(cfg *config.Config, db *db.DB) *Controller {
-	return &Controller{
-		cfg: cfg,
-		db:  db,
-	}
-}
 
 func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, error) {
 	var board Board
@@ -36,8 +22,7 @@ func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, 
 }
 
 func (c *Controller) CreateBoard(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*Board, error) {
-	var query string
-	query = `INSERT INTO Boards (id, title, is_private, organization_id, owner_id) VALUES ($1, $2, $3, $4, $5);`
+	query := `INSERT INTO Boards (id, title, is_private, organization_id, owner_id) VALUES ($1, $2, $3, $4, $5);`
 	boardId := uuid.New().String()
 	_, err := c.db.DB.ExecContext(ctx, query, boardId, name, isPrivate, orgId, userId)
 	if err != nil {

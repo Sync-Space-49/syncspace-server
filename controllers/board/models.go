@@ -1,6 +1,22 @@
 package board
 
-import "github.com/google/uuid"
+import (
+	"github.com/Sync-Space-49/syncspace-server/config"
+	"github.com/Sync-Space-49/syncspace-server/db"
+	"github.com/google/uuid"
+)
+
+type Controller struct {
+	cfg *config.Config
+	db  *db.DB
+}
+
+func NewController(cfg *config.Config, db *db.DB) *Controller {
+	return &Controller{
+		cfg: cfg,
+		db:  db,
+	}
+}
 
 type Board struct {
 	Id             uuid.UUID `db:"id" json:"id"`
