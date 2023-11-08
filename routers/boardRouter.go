@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -73,7 +74,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}/members", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToBoard))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}/members/{memberId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromBoard))).Methods("DELETE")
 
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanels))).Methods("GET");
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanels))).Methods("GET")
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreatePanel))).Methods("POST");
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanel))).Methods("GET");
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdatePanel))).Methods("PUT");
@@ -160,7 +161,11 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	ctx := request.Context()
 	org, err := handler.controller.GetBoardById(ctx, boardId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get organization: %s", err.Error()), http.StatusInternalServerError)
+		}
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
@@ -336,6 +341,91 @@ func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, r
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *boardHandler) GetPanels(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
+	canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadBoard {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	org, err := handler.controller.GetPanelsByBoardId(ctx, boardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get panels from board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(org)
+}
+
+func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	panelId := params["panelId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
+	canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadBoard {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	org, err := handler.controller.GetPanelById(ctx, panelId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No panel with id %s found", panelId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get panel: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(org)
 }
 
 // func (handler *boardHandler) UpdateList(writer http.ResponseWriter, request *http.Request) {
