@@ -212,3 +212,20 @@ func (c *Controller) RemoveMember(userId string, organizationId string) error {
 	}
 	return nil
 }
+
+func (c *Controller) GetBoardsInOrg(ctx context.Context, orgId string) (*[]string, error) {
+	boardIds := []string{}
+
+	allBoards, err := c.db.DB.Query("SELECT id FROM Boards WHERE organization_id = $1", orgId)
+	if err != nil {
+		return nil, err
+	}
+	for allBoards.Next() {
+		var boardId string
+		if err := allBoards.Scan(&boardId); err != nil {
+			return &boardIds, err
+		}
+		boardIds = append(boardIds, boardId)
+	}
+	return &boardIds, nil
+}
