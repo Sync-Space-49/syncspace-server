@@ -61,6 +61,42 @@ func (c *Controller) InitializeBoard(ownerId string, boardId string, orgId strin
 		Name:        fmt.Sprintf("org%s:board%s:update", orgId, boardId),
 		Description: fmt.Sprintf("Allows you to update info about the board with id %s", boardId),
 	}
+	createPanelPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:create_panel", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to create a panel on the board with id %s", boardId),
+	}
+	deletePanelPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:delete_panel", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to delete a panel on the board with id %s", boardId),
+	}
+	updatePanelPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:update_panel", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to update a panel on the board with id %s", boardId),
+	}
+	createStackPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:create_stack", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to create a stack on the board with id %s", boardId),
+	}
+	updateStackPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:update_stack", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to update a stack on the board with id %s", boardId),
+	}
+	deleteStackPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:delete_stack", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to delete a stack on the board with id %s", boardId),
+	}
+	createCardPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:create_card", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to create a card on the board with id %s", boardId),
+	}
+	updateCardPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:update_card", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to update a card on the board with id %s", boardId),
+	}
+	deleteCardPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:delete_card", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to delete a card on the board with id %s", boardId),
+	}
 	addMembersPerm := auth.Permission{
 		Name:        fmt.Sprintf("org%s:board%s:add_members", orgId, boardId),
 		Description: fmt.Sprintf("Allows you to add members to the board with id %s", boardId),
@@ -71,9 +107,9 @@ func (c *Controller) InitializeBoard(ownerId string, boardId string, orgId strin
 	}
 
 	boardMemberPermissions := []auth.Permission{
-		readPerm,
+		readPerm, createCardPerm, updateCardPerm, deleteCardPerm,
 	}
-	boardOwnerPermissions := append(boardMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm)
+	boardOwnerPermissions := append(boardMemberPermissions, deletePerm, updatePerm, createPanelPerm, deletePanelPerm, updatePanelPerm, createStackPerm, updateStackPerm, deleteStackPerm, addMembersPerm, removeMembersPerm)
 
 	// Because the owner role has all permissions, we only need to call CreatePermissions once
 	err = auth.CreatePermissions(boardOwnerPermissions)

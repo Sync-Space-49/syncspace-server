@@ -13,6 +13,25 @@ func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[
 	return &panels, nil
 }
 
+func (c *Controller) CreatePanel(ctx context.Context, title string, boardId string) error {
+	var nextPosition int
+	err := c.db.DB.GetContext(ctx, &nextPosition, `
+		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM panels where board_id=$1;
+	`, boardId)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.db.DB.ExecContext(ctx, `
+		INSERT INTO Panels (title, position, board_id) VALUES ($1, $2, $3);
+	`, title, nextPosition, boardId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *Controller) GetPanelById(ctx context.Context, panelId string) (*Panel, error) {
 	var panel Panel
 	err := c.db.DB.GetContext(ctx, &panel, `
