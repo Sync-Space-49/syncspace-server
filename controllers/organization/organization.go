@@ -213,7 +213,18 @@ func (c *Controller) RemoveMember(userId string, organizationId string) error {
 	return nil
 }
 
-func (c *Controller) GetBoardsInOrg(ctx context.Context, orgId string) (*[]string, error) {
+// yes i know i could have done this in fewer db calls by importing boards from the board models and creating board objects but i did it this way sue me
+func (c *Controller) CheckBoardPrivacy(ctx context.Context, boardId string) (bool, error) {
+	privacy := true
+	err := c.db.DB.GetContext(ctx, &privacy, `SELECT is_private FROM Boards WHERE id=$1;
+	`, boardId)
+	if err != nil {
+		return true, err
+	}
+	return privacy, nil
+}
+
+func (c *Controller) GetBoardIdsInOrg(ctx context.Context, orgId string) (*[]string, error) {
 	boardIds := []string{}
 
 	allBoards, err := c.db.DB.Query("SELECT id FROM Boards WHERE organization_id = $1", orgId)
@@ -230,12 +241,22 @@ func (c *Controller) GetBoardsInOrg(ctx context.Context, orgId string) (*[]strin
 	return &boardIds, nil
 }
 
-func (c *Controller) CheckBoardPrivacy(ctx context.Context, boardId string) (bool, error) {
-	privacy := true
-	err := c.db.DB.GetContext(ctx, &privacy, `SELECT is_private FROM Boards WHERE id=$1;
-	`, boardId)
+func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, orgId string, userId string) (*[]string, error) {
+	boardsInOrg, err := c.GetBoardIdsInOrg(ctx, orgId)
 	if err != nil {
-		return true, err
+		return nil, err
 	}
-	return privacy, nil
+	returnedBoards := []string{}
+	for _, element := range *boardsInOrg {
+		isBoardPrivate, err := c.CheckBoardPrivacy(ctx, element)
+		readPrivateBoardPerm := fmt.Sprintf("org%s:board%s:read", orgId, element)
+		canReadPrivateBoard, err := auth.HasPermission(userId, readPrivateBoardPerm)
+		if err != nil {
+			return nil, err
+		}
+		if (isBoardPrivate && canReadPrivateBoard) || !isBoardPrivate {
+			returnedBoards = append(returnedBoards, element)
+		}
+	}
+	return &returnedBoards, nil
 }

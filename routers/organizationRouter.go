@@ -319,7 +319,7 @@ func (handler *organizationHandler) GetAllBoards(writer http.ResponseWriter, req
 	}
 
 	ctx := request.Context()
-	boardsInOrg, err := handler.controller.GetBoardsInOrg(ctx, organizationId)
+	visibleBoards, err := handler.controller.GetViewableBoardsInOrg(ctx, organizationId, userId)
 	if err != nil {
 		if err.Error() == sql.ErrNoRows.Error() {
 			http.Error(writer, fmt.Sprintf("No organization found with id %s", organizationId), http.StatusNotFound)
@@ -328,23 +328,8 @@ func (handler *organizationHandler) GetAllBoards(writer http.ResponseWriter, req
 		}
 		return
 	}
-	returnedBoards := []string{}
-	for _, element := range *boardsInOrg {
-		// TODO: CHECK IF THE BOARD IS PRIVATE
-		isBoardPrivate, err := handler.controller.CheckBoardPrivacy(ctx, element)
-		readPrivateBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, element)
-		canReadPrivateBoard, err := auth.HasPermission(userId, readPrivateBoardPerm)
-		if !((!canReadPrivateBoard) && (isBoardPrivate)) {
-			returnedBoards = append(returnedBoards, element)
-		}
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-	}
-	// fmt.Println(returnedBoards)
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(returnedBoards)
+	json.NewEncoder(writer).Encode(visibleBoards)
 }
