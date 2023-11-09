@@ -229,3 +229,13 @@ func (c *Controller) GetBoardsInOrg(ctx context.Context, orgId string) (*[]strin
 	}
 	return &boardIds, nil
 }
+
+func (c *Controller) CheckBoardPrivacy(ctx context.Context, boardId string) (bool, error) {
+	privacy := true
+	err := c.db.DB.GetContext(ctx, &privacy, `SELECT is_private FROM Boards WHERE id=$1;
+	`, boardId)
+	if err != nil {
+		return true, err
+	}
+	return privacy, nil
+}
