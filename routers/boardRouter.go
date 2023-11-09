@@ -27,73 +27,51 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 		router:     parentRouter.NewRoute().Subrouter(),
 		controller: board.NewController(cfg, db),
 	}
-	// Grab board with id of boardId from organization with id of organizationId
-	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.GetBoard).Methods("GET")
 
-	// Edit/replace info about a list based on params
-	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.UpdateList).Methods("PUT")
-
-	// // Delete a list from a board (including it's cards)
-	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}", organizationsPrefix, boardsPrefix), handler.DeleteList).Methods("DELETE")
-
-	// // Edit/replace info about a card based on params
-	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{CardId}", organizationsPrefix, boardsPrefix), handler.UpdateCard).Methods("PUT")
-
-	// // Grab all cards assigned to a user for a specific board
-	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{BoardMemberId}/assigned", organizationsPrefix, boardsPrefix), handler.GetAssignedCards).Methods("POST")
-
-	// // Grab all cards assigned to a user for all boards
 	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardMemberId}/assigned", organizationsPrefix, boardsPrefix), handler.GetAllAssignedCards).Methods("POST")
-
 	// // Assign a card to a user
 	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{ListId}/{CardId}/{BoardMemberId}", organizationsPrefix, boardsPrefix), handler.AssignCardToUser).Methods("POST")
-
 	// // Unassign a card from a user
 	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardId}/{ListId}/{CardId}/{BoardMemberId}", organizationsPrefix, boardsPrefix), handler.UnassignCardFromUser).Methods("DELETE")
-
 	// // add a tag to a board to use on tags
 	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/tag", organizationsPrefix, boardsPrefix), handler.CreateTag).Methods("POST")
-
 	// // delete a tag from a board
 	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/tag/{TagID}", organizationsPrefix, boardsPrefix), handler.DeleteTag).Methods("DELETE")
-
 	// // add a tag to a card
 	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardID}/{ListID}/{CardID}/{TagID}", organizationsPrefix, boardsPrefix), handler.AddTagToCard).Methods("POST")
-
 	// // delete a tag from a card
 	// handler.router.HandleFunc(fmt.Sprintf("%s/{OrganizationId}/%s/{BoardID}/{ListID}/{CardID}/{TagID}", organizationsPrefix, boardsPrefix), handler.AddTagToCard).Methods("DELETE")
 
-	// TODO: Update 'list' methods to 'stack' and 'panel'
-
-	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/boards", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllBoards))).Methods("GET")
-	handler.router.Handle("/api/organizations/{organizationId}/boards", auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
-	handler.router.Handle("/api/organizations/{organizationId}/boards/{boardId}", auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
+	handler.router.Handle(boardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllBoards))).Methods("GET")
+	handler.router.Handle(boardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
 
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/members", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoardMembers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}/members", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToBoard))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}/members/{memberId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromBoard))).Methods("DELETE")
-
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/details", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteBoard))).Methods("GET")
-	handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanels))).Methods("GET")
-	handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreatePanel))).Methods("POST")
-	handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanel))).Methods("GET")
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdatePanel))).Methods("PUT");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeletePanel))).Methods("DELETE");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/details", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompletePanel))).Methods("GET")
 
-	handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStacks))).Methods("GET")
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateStacks))).Methods("POST")
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStack))).Methods("GET");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateStacks))).Methods("PUT");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteStacks))).Methods("DELETE");
+	handler.router.Handle(panelsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanels))).Methods("GET")
+	handler.router.Handle(panelsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreatePanel))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanel))).Methods("GET")
+	// handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdatePanel))).Methods("PUT");
+	// handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeletePanel))).Methods("DELETE");
+	// handler.router.Handle(fmt.Sprintf("%s/{panelId}/details", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompletePanel))).Methods("GET")
 
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}/cards", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}/cards", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}/cards/{cardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}/cards/{cardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}/cards/{cardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE");
+	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetStacks))).Methods("GET")
+	// handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateStacks))).Methods("POST")
+	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStack))).Methods("GET");
+	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateStacks))).Methods("PUT");
+	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteStacks))).Methods("DELETE");
+	// handler.router.Handle(fmt.Sprintf("%s/{stackId}/details", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteStack))).Methods("GET")
+
+	// handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET");
+	// handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST");
+	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET");
+	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT");
+	// handler.router.Handle(fmt.Sprintf("%s{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE");
 
 	return handler.router
 }
