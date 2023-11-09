@@ -10,6 +10,59 @@ import (
 	"github.com/google/uuid"
 )
 
+func (c *Controller) CheckBoardPrivacy(ctx context.Context, boardId string) (bool, error) {
+	privacy := true
+	err := c.db.DB.GetContext(ctx, &privacy, `SELECT is_private FROM Boards WHERE id=$1;
+	`, boardId)
+	if err != nil {
+		return true, err
+	}
+	return privacy, nil
+}
+
+func (c *Controller) GetBoardIdsInOrg(ctx context.Context, orgId string) (*[]string, error) {
+	boardIds := []string{}
+
+	allBoards, err := c.db.DB.Query("SELECT id FROM Boards WHERE organization_id = $1", orgId)
+	if err != nil {
+		return nil, err
+	}
+	for allBoards.Next() {
+		var boardId string
+		if err := allBoards.Scan(&boardId); err != nil {
+			return &boardIds, err
+		}
+		boardIds = append(boardIds, boardId)
+	}
+	return &boardIds, nil
+}
+
+func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, orgId string, userId string) (*[]Board, error) {
+	var orgBoards []Board
+	err := c.db.DB.GetContext(ctx, &orgBoards, `
+		SELECT * FROM Boards WHERE organization_id=$1;
+	`, orgId)
+	if err != nil {
+		return nil, err
+	}
+
+	var viewableBoards []Board
+	for _, board := range orgBoards {
+		if board.IsPrivate {
+			readBoardPerm := fmt.Sprintf("org%s:board%s:read", orgId, board.Id)
+			canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
+			if err != nil {
+				return nil, err
+			}
+			if !canReadBoard {
+				continue
+			}
+		}
+		viewableBoards = append(viewableBoards, board)
+	}
+	return &viewableBoards, nil
+}
+
 func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, error) {
 	var board Board
 	err := c.db.DB.GetContext(ctx, &board, `

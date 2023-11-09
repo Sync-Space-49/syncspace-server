@@ -65,6 +65,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 
 	// TODO: Update 'list' methods to 'stack' and 'panel'
 
+	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/boards", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllBoards))).Methods("GET")
 	handler.router.Handle("/api/organizations/{organizationId}/boards", auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
 	handler.router.Handle("/api/organizations/{organizationId}/boards/{boardId}", auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
@@ -93,6 +94,42 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}/cards/{cardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE");
 
 	return handler.router
+}
+
+func (handler *boardHandler) GetAllBoards(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	if organizationId == "" {
+		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
+		return
+	}
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	visibleBoards, err := handler.controller.GetViewableBoardsInOrg(ctx, organizationId, userId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No organization found with id %s", organizationId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get organization: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(visibleBoards)
 }
 
 func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *http.Request) {
