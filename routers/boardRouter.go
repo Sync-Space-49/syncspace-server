@@ -83,8 +83,8 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeletePanel))).Methods("DELETE");
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/details", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompletePanel))).Methods("GET")
 
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStacks))).Methods("GET");
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateStacks))).Methods("POST");
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStacks))).Methods("GET")
+	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateStacks))).Methods("POST")
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStack))).Methods("GET");
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateStacks))).Methods("PUT");
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/panels/{panelId}/stack/{stackId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteStacks))).Methods("DELETE");
@@ -507,6 +507,35 @@ func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(panel)
+}
+
+func (handler *boardHandler) GetStacks(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	panelId := params["panelId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	stacks, err := handler.controller.GetStacksByPanelId(ctx, panelId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get stacks from panel with id %s: %s", panelId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(stacks)
 }
 
 // func (handler *boardHandler) UpdateList(writer http.ResponseWriter, request *http.Request) {
