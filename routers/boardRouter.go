@@ -137,6 +137,10 @@ func (handler *boardHandler) GetAllBoards(writer http.ResponseWriter, request *h
 func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *http.Request) {
 	title := request.FormValue("title")
 	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
 	params := mux.Vars(request)
 	orgId := params["organizationId"]
 	if title == "" {
@@ -182,8 +186,15 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
 	readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
 	canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -224,14 +235,17 @@ func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *ht
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
 	deleteBoardPerm := fmt.Sprintf("org%s:board%s:delete", organizationId, boardId)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	canDeleteBoard, err := auth.HasPermission(userId, deleteBoardPerm)
-
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User does not have permission to read org with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+	canDeleteBoard, err := auth.HasPermission(userId, deleteBoardPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canDeleteBoard {
@@ -272,14 +286,17 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
 	updateBoardPerm := fmt.Sprintf("org%s:board%s:update", organizationId, boardId)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	canUpdateBoard, err := auth.HasPermission(userId, updateBoardPerm)
-
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+	canUpdateBoard, err := auth.HasPermission(userId, updateBoardPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canUpdateBoard {
