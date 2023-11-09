@@ -555,6 +555,49 @@ func (handler *boardHandler) GetStacks(writer http.ResponseWriter, request *http
 	json.NewEncoder(writer).Encode(stacks)
 }
 
+func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	panelId := params["panelId"]
+
+	title := request.FormValue("title")
+	if title == "" {
+		http.Error(writer, "No Title Found", http.StatusBadRequest)
+		return
+	}
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
+		return
+	}
+	createStackPerm := fmt.Sprintf("org%s:board%s:create_stack", organizationId, boardId)
+	canCreateStack, err := auth.HasPermission(userId, createStackPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canCreateStack {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create stack on board with id: %s", userId, boardId), http.StatusForbidden)
+		return
+	}
+
+	err = handler.controller.CreateStack(request.Context(), title, panelId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create panel: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+}
+
 // func (handler *boardHandler) UpdateList(writer http.ResponseWriter, request *http.Request) {
 
 // }

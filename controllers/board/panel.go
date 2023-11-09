@@ -16,7 +16,7 @@ func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[
 func (c *Controller) CreatePanel(ctx context.Context, title string, boardId string) error {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
-		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM panels where board_id=$1;
+		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Panels where board_id=$1;
 	`, boardId)
 	if err != nil {
 		return err
