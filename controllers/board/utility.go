@@ -12,13 +12,13 @@ func CopyToCompleteBoard(source Board, dest *CompleteBoard) {
 func CopyToCompletePanel(source Panel, dest *CompletePanel) {
 	dest.Id = source.Id
 	dest.Title = source.Title
-	dest.Postition = source.Postition
+	dest.Postition = source.Position
 	dest.BoardId = source.BoardId
 }
 
 func CopyToCompleteStack(source Stack, dest *CompleteStack) {
 	dest.Id = source.Id
 	dest.Title = source.Title
-	dest.Postition = source.Postition
+	dest.Postition = source.Position
 	dest.PanelId = source.PanelId
 }

@@ -27,16 +27,16 @@ type Card struct {
 }
 
 type Stack struct {
-	Id        uuid.UUID `db:"id" json:"id"`
-	Title     string    `db:"title" json:"title"`
-	Postition int       `db:"position" json:"position"`
-	PanelId   uuid.UUID `db:"panel_id" json:"panel_id"`
+	Id       uuid.UUID `db:"id" json:"id"`
+	Title    string    `db:"title" json:"title"`
+	Position int       `db:"position" json:"position"`
+	PanelId  uuid.UUID `db:"panel_id" json:"panel_id"`
 }
 type Panel struct {
-	Id        uuid.UUID `db:"id" json:"id"`
-	Title     string    `db:"title" json:"title"`
-	Postition int       `db:"position" json:"position"`
-	BoardId   uuid.UUID `db:"board_id" json:"board_id"`
+	Id       uuid.UUID `db:"id" json:"id"`
+	Title    string    `db:"title" json:"title"`
+	Position int       `db:"position" json:"position"`
+	BoardId  uuid.UUID `db:"board_id" json:"board_id"`
 }
 type Board struct {
 	Id             uuid.UUID `db:"id" json:"id"`

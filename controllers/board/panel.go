@@ -1,6 +1,8 @@
 package board
 
-import "context"
+import (
+	"context"
+)
 
 func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]Panel, error) {
 	panels := make([]Panel, 0)
@@ -41,4 +43,40 @@ func (c *Controller) GetPanelById(ctx context.Context, panelId string) (*Panel, 
 		return nil, err
 	}
 	return &panel, nil
+}
+
+func (c *Controller) UpdatePanelById(ctx context.Context, boardId string, panelId string, title string, position *int) error {
+	panel, err := c.GetPanelById(ctx, panelId)
+	if err != nil {
+		return err
+	}
+	if title == "" {
+		title = panel.Title
+	}
+	if position == nil {
+		position = &panel.Position
+	}
+
+	if *position != panel.Position {
+		if *position > panel.Position {
+			_, err = c.db.DB.ExecContext(ctx, `
+				UPDATE Panels SET position=position-1 WHERE board_id=$1 AND position>$2 AND position<=$3;
+			`, boardId, panel.Position, *position)
+		} else {
+			_, err = c.db.DB.ExecContext(ctx, `
+				UPDATE Panels SET position=position+1 WHERE board_id=$1 AND position<$2 AND position>=$3;
+			`, boardId, panel.Position, *position)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
+		UPDATE Panels SET title=$1, position=$2 WHERE id=$3;
+	`, title, *position, panelId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
