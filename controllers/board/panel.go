@@ -5,7 +5,7 @@ import "context"
 func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]Panel, error) {
 	panels := make([]Panel, 0)
 	err := c.db.DB.SelectContext(ctx, &panels, `
-		SELECT * FROM Panels WHERE board_id=$1;
+		SELECT * FROM Panels WHERE board_id=$1 ORDER BY position ASC;
 	`, boardId)
 	if err != nil {
 		return nil, err

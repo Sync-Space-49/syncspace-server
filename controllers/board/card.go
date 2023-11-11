@@ -5,7 +5,7 @@ import "context"
 func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]Card, error) {
 	cards := make([]Card, 0)
 	err := c.db.DB.SelectContext(ctx, &cards, `
-		SELECT * FROM Cards WHERE stack_id=$1;
+		SELECT * FROM Cards WHERE stack_id=$1 ORDER BY position ASC;
 	`, stackId)
 	if err != nil {
 		return nil, err

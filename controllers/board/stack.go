@@ -5,7 +5,7 @@ import "context"
 func (c *Controller) GetStacksByPanelId(ctx context.Context, panelId string) (*[]Stack, error) {
 	stacks := make([]Stack, 0)
 	err := c.db.DB.SelectContext(ctx, &stacks, `
-		SELECT * FROM Stacks WHERE panel_id=$1;
+		SELECT * FROM Stacks WHERE panel_id=$1 ORDER BY position ASC;
 	`, panelId)
 	if err != nil {
 		return nil, err
