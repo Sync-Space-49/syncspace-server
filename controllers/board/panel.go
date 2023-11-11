@@ -3,7 +3,7 @@ package board
 import "context"
 
 func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]Panel, error) {
-	var panels []Panel
+	panels := make([]Panel, 0)
 	err := c.db.DB.SelectContext(ctx, &panels, `
 		SELECT * FROM Panels WHERE board_id=$1;
 	`, boardId)

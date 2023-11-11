@@ -3,7 +3,7 @@ package board
 import "context"
 
 func (c *Controller) GetStacksByPanelId(ctx context.Context, panelId string) (*[]Stack, error) {
-	var stacks []Stack
+	stacks := make([]Stack, 0)
 	err := c.db.DB.SelectContext(ctx, &stacks, `
 		SELECT * FROM Stacks WHERE panel_id=$1;
 	`, panelId)

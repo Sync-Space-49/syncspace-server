@@ -10,33 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func (c *Controller) CheckBoardPrivacy(ctx context.Context, boardId string) (bool, error) {
-	privacy := true
-	err := c.db.DB.GetContext(ctx, &privacy, `SELECT is_private FROM Boards WHERE id=$1;
-	`, boardId)
-	if err != nil {
-		return true, err
-	}
-	return privacy, nil
-}
-
-func (c *Controller) GetBoardIdsInOrg(ctx context.Context, orgId string) (*[]string, error) {
-	boardIds := []string{}
-
-	allBoards, err := c.db.DB.Query("SELECT id FROM Boards WHERE organization_id = $1", orgId)
-	if err != nil {
-		return nil, err
-	}
-	for allBoards.Next() {
-		var boardId string
-		if err := allBoards.Scan(&boardId); err != nil {
-			return &boardIds, err
-		}
-		boardIds = append(boardIds, boardId)
-	}
-	return &boardIds, nil
-}
-
 func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, orgId string, userId string) (*[]Board, error) {
 	var orgBoards []Board
 	err := c.db.DB.GetContext(ctx, &orgBoards, `
@@ -72,6 +45,40 @@ func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, 
 		return nil, err
 	}
 	return &board, nil
+}
+
+func (c *Controller) GetCompleteBoardById(ctx context.Context, boardId string) (*CompleteBoard, error) {
+	var completeBoard CompleteBoard
+	board, err := c.GetBoardById(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+	CopyToCompleteBoard(*board, &completeBoard)
+	panels, err := c.GetPanelsByBoardId(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+	for _, panel := range *panels {
+		var completePanel CompletePanel
+		CopyToCompletePanel(panel, &completePanel)
+		completePanel.Stacks = make([]CompleteStack, 0)
+		stacks, err := c.GetStacksByPanelId(ctx, panel.Id.String())
+		if err != nil {
+			return nil, err
+		}
+		for _, stack := range *stacks {
+			var completeStack CompleteStack
+			CopyToCompleteStack(stack, &completeStack)
+			cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
+			if err != nil {
+				return nil, err
+			}
+			completeStack.Cards = *cards
+			completePanel.Stacks = append(completePanel.Stacks, completeStack)
+		}
+		completeBoard.Panels = append(completeBoard.Panels, completePanel)
+	}
+	return &completeBoard, nil
 }
 
 func (c *Controller) CreateBoard(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*Board, error) {

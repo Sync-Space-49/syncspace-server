@@ -30,7 +30,7 @@ type Stack struct {
 	Id        uuid.UUID `db:"id" json:"id"`
 	Title     string    `db:"title" json:"title"`
 	Postition int       `db:"position" json:"position"`
-	PanelId   uuid.UUID `db:"board_id" json:"panel_id"`
+	PanelId   uuid.UUID `db:"panel_id" json:"panel_id"`
 }
 type Panel struct {
 	Id        uuid.UUID `db:"id" json:"id"`
@@ -48,34 +48,28 @@ type Board struct {
 	OrganizationId uuid.UUID `db:"organization_id" json:"organization_id"`
 }
 
-type CompleteCard struct {
-	Id          uuid.UUID `db:"id" json:"id"`
-	Title       string    `db:"title" json:"title"`
-	Postition   int       `db:"position" json:"position"`
-	Description string    `db:"description" json:"description"`
-}
-
 type CompleteStack struct {
-	Id        uuid.UUID      `db:"id" json:"id"`
-	Title     string         `db:"title" json:"title"`
-	Postition int            `db:"position" json:"position"`
-	Cards     []CompleteCard `db:"cards" json:"cards"`
+	Id        uuid.UUID `db:"id" json:"id"`
+	Title     string    `db:"title" json:"title"`
+	Postition int       `db:"position" json:"position"`
+	PanelId   uuid.UUID `db:"panel_id" json:"panel_id"`
+	Cards     []Card    `json:"cards"`
 }
 
 type CompletePanel struct {
 	Id        uuid.UUID       `db:"id" json:"id"`
 	Title     string          `db:"title" json:"title"`
 	Postition int             `db:"position" json:"position"`
-	Stacks    []CompleteStack `db:"stacks" json:"stacks"`
+	BoardId   uuid.UUID       `db:"board_id" json:"board_id"`
+	Stacks    []CompleteStack `json:"stacks"`
 }
 
 type CompleteBoard struct {
-	Id             uuid.UUID       `db:"id" json:"id"`
-	OwnerId        string          `db:"owner_id" json:"owner_id"`
-	Title          string          `db:"title" json:"title"`
-	CreatedAt      string          `db:"created_at" json:"created_at"`
-	ModifiedAt     string          `db:"modified_at" json:"modified_at"`
-	IsPrivate      bool            `db:"is_private" json:"is_private"`
-	OrganizationId uuid.UUID       `db:"organization_id" json:"organization_id"`
-	Panels         []CompletePanel `db:"panels" json:"panels"`
+	Id         uuid.UUID       `db:"id" json:"id"`
+	OwnerId    string          `db:"owner_id" json:"owner_id"`
+	Title      string          `db:"title" json:"title"`
+	CreatedAt  string          `db:"created_at" json:"created_at"`
+	ModifiedAt string          `db:"modified_at" json:"modified_at"`
+	IsPrivate  bool            `db:"is_private" json:"is_private"`
+	Panels     []CompletePanel `json:"panels"`
 }

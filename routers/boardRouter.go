@@ -47,11 +47,11 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
+	handler.router.Handle(fmt.Sprintf("%s/{boardId}/details", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteBoard))).Methods("GET")
 
 	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/members", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoardMembers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}/members", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToBoard))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}/members/{memberId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromBoard))).Methods("DELETE")
-	// handler.router.Handle(fmt.Sprintf("%s/{boardId}/details", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteBoard))).Methods("GET")
 
 	handler.router.Handle(panelsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanels))).Methods("GET")
 	handler.router.Handle(panelsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreatePanel))).Methods("POST")
@@ -102,7 +102,7 @@ func (handler *boardHandler) GetAllBoards(writer http.ResponseWriter, request *h
 		if err.Error() == sql.ErrNoRows.Error() {
 			http.Error(writer, fmt.Sprintf("No organization found with id %s", organizationId), http.StatusNotFound)
 		} else {
-			http.Error(writer, fmt.Sprintf("Failed to get organization: %s", err.Error()), http.StatusInternalServerError)
+			http.Error(writer, fmt.Sprintf("Failed to get viewable boards: %s", err.Error()), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -149,20 +149,10 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	boardId := params["boardId"]
-	// The methods below will never run as they give a 404
 
-	// if organizationId == "" {
-	// 	http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-	// 	return
-	// }
-	// if boardId == "" {
-	// 	http.Error(writer, "No Board ID Found", http.StatusBadRequest)
-	// 	return
-	// }
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
@@ -170,19 +160,6 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	}
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
-		return
-	}
-	canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
-		return
-	}
-	if !canReadBoard {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
 		return
 	}
 
@@ -192,54 +169,74 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 		if err.Error() == sql.ErrNoRows.Error() {
 			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
 		} else {
-			http.Error(writer, fmt.Sprintf("Failed to get organization: %s", err.Error()), http.StatusInternalServerError)
+			http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
 		}
 		return
 	}
+
+	if org.IsPrivate {
+		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
+		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if !canReadBoard {
+			http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+			return
+		}
+	}
+
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(org)
 }
 
-func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *http.Request) {
+func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	boardId := params["boardId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
-	// fmt.Printf("1 userId: %s", userId)
-
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	deleteBoardPerm := fmt.Sprintf("org%s:board%s:delete", organizationId, boardId)
 	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read org with id: %s", organizationId), http.StatusForbidden)
-		return
-	}
-	canDeleteBoard, err := auth.HasPermission(userId, deleteBoardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if !canDeleteBoard {
-		http.Error(writer, fmt.Sprintf("User does not have permission to delete board with id: %s", boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.DeleteBoardById(ctx, boardId)
+	org, err := handler.controller.GetCompleteBoardById(ctx, boardId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to delete board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
+		}
 		return
 	}
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusCreated)
 
+	if org.IsPrivate {
+		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
+		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if !canReadBoard {
+			http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+			return
+		}
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(org)
 }
 
 func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *http.Request) {
@@ -290,7 +287,46 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+}
 
+func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	// fmt.Printf("1 userId: %s", userId)
+
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	deleteBoardPerm := fmt.Sprintf("org%s:board%s:delete", organizationId, boardId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read org with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+	canDeleteBoard, err := auth.HasPermission(userId, deleteBoardPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canDeleteBoard {
+		http.Error(writer, fmt.Sprintf("User does not have permission to delete board with id: %s", boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err = handler.controller.DeleteBoardById(ctx, boardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to delete board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
 }
 
 func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, request *http.Request) {
