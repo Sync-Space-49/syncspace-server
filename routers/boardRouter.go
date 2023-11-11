@@ -64,14 +64,14 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetStacks))).Methods("GET")
 	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateStack))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStack))).Methods("GET")
-	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateStacks))).Methods("PUT");
+	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateStack))).Methods("PUT")
 	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteStacks))).Methods("DELETE");
 	// handler.router.Handle(fmt.Sprintf("%s/{stackId}/details", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteStack))).Methods("GET")
 
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET")
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET")
-	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT");
+	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT")
 	// handler.router.Handle(fmt.Sprintf("%s{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE");
 
 	return handler.router
@@ -93,7 +93,7 @@ func (handler *boardHandler) GetAllBoards(writer http.ResponseWriter, request *h
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -160,7 +160,7 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -183,7 +183,7 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 			return
 		}
 		if !canReadBoard {
-			http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
 	}
@@ -207,7 +207,7 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -230,7 +230,7 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 			return
 		}
 		if !canReadBoard {
-			http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
 	}
@@ -267,7 +267,7 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	canUpdateBoard, err := auth.HasPermission(userId, updateBoardPerm)
@@ -276,7 +276,7 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 		return
 	}
 	if !canUpdateBoard {
-		http.Error(writer, fmt.Sprintf("User does not have permission to update board with id: %s", boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -307,7 +307,7 @@ func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *ht
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read org with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read org with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	canDeleteBoard, err := auth.HasPermission(userId, deleteBoardPerm)
@@ -316,7 +316,7 @@ func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *ht
 		return
 	}
 	if !canDeleteBoard {
-		http.Error(writer, fmt.Sprintf("User does not have permission to delete board with id: %s", boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -361,7 +361,7 @@ func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, reques
 		return
 	}
 	if !canAddUsers {
-		http.Error(writer, fmt.Sprintf("User does not have permission to add users to org %s board with id %s", organizationId, boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to org %s board with id %s", userId, organizationId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -401,7 +401,7 @@ func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, r
 		return
 	}
 	if !canRemoveUsers {
-		http.Error(writer, fmt.Sprintf("User does not have permission to add users to org %s board with id %s", organizationId, boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to org %s board with id %s", userId, organizationId, boardId), http.StatusForbidden)
 		return
 	}
 	// fmt.Println("hit testing a on member: ", memberId)
@@ -428,7 +428,7 @@ func (handler *boardHandler) GetPanels(writer http.ResponseWriter, request *http
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s  does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -439,7 +439,7 @@ func (handler *boardHandler) GetPanels(writer http.ResponseWriter, request *http
 		return
 	}
 	if !canReadBoard {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s  does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -477,12 +477,12 @@ func (handler *boardHandler) CreatePanel(writer http.ResponseWriter, request *ht
 		return
 	}
 	createPanelPerm := fmt.Sprintf("org%s:board%s:create_panel", organizationId, boardId)
-	canCreateBoard, err := auth.HasPermission(userId, createPanelPerm)
+	canCreatePanel, err := auth.HasPermission(userId, createPanelPerm)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
-	if !canCreateBoard {
+	if !canCreatePanel {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create panel on board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
@@ -511,7 +511,7 @@ func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -522,7 +522,7 @@ func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.
 		return
 	}
 	if !canReadBoard {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -567,7 +567,7 @@ func (handler *boardHandler) UpdatePanel(writer http.ResponseWriter, request *ht
 		return
 	}
 	if !canUpdatePanel {
-		http.Error(writer, fmt.Sprintf("User does not have permission to update panel with id: %s", panelId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s  does not have permission to update panel %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -595,7 +595,7 @@ func (handler *boardHandler) GetStacks(writer http.ResponseWriter, request *http
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -668,7 +668,7 @@ func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -691,7 +691,7 @@ func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.
 			return
 		}
 		if !canReadBoard {
-			http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
 	}
@@ -711,6 +711,47 @@ func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.
 	json.NewEncoder(writer).Encode(stack)
 }
 
+func (handler *boardHandler) UpdateStack(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	panelId := params["panelId"]
+	stackId := params["stackId"]
+
+	title := request.FormValue("title")
+	var position *int
+	if request.FormValue("position") != "" {
+		var err error
+		*position, err = strconv.Atoi(request.FormValue("position"))
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to parse position: %s", err.Error()), http.StatusBadRequest)
+			return
+		}
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	updateStackPerm := fmt.Sprintf("org%s:board%s:update_stack", organizationId, boardId)
+	canStackPanel, err := auth.HasPermission(userId, updateStackPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canStackPanel {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update stack %s in board with id: %s", userId, stackId, boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err = handler.controller.UpdateStackById(ctx, panelId, stackId, title, position)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to update stack with id %s: %s", stackId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+}
+
 func (handler *boardHandler) GetCards(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
@@ -725,7 +766,7 @@ func (handler *boardHandler) GetCards(writer http.ResponseWriter, request *http.
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -798,7 +839,7 @@ func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.R
 		return
 	}
 	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -821,7 +862,7 @@ func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.R
 			return
 		}
 		if !canReadBoard {
-			http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
 	}
