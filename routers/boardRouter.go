@@ -68,7 +68,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	// handler.router.Handle(fmt.Sprintf("%s/{stackId}/details", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteStack))).Methods("GET")
 
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET")
-	// handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST");
+	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST")
 	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET");
 	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT");
 	// handler.router.Handle(fmt.Sprintf("%s{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE");
@@ -605,17 +605,49 @@ func (handler *boardHandler) GetCards(writer http.ResponseWriter, request *http.
 	json.NewEncoder(writer).Encode(cards)
 }
 
-// func (handler *boardHandler) UpdateList(writer http.ResponseWriter, request *http.Request) {
+func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	stackId := params["stackId"]
 
-// }
+	title := request.FormValue("title")
+	if title == "" {
+		http.Error(writer, "No Title Found", http.StatusBadRequest)
+		return
+	}
+	description := request.FormValue("description")
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
+		return
+	}
+	createCardPerm := fmt.Sprintf("org%s:board%s:create_card", organizationId, boardId)
+	canCreateCard, err := auth.HasPermission(userId, createCardPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canCreateCard {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create a card on board with id: %s", userId, boardId), http.StatusForbidden)
+		return
+	}
 
-// func (handler *boardHandler) DeleteList(writer http.ResponseWriter, request *http.Request) {
-
-// }
-
-// func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *http.Request) {
-
-// }
+	err = handler.controller.CreateCard(request.Context(), title, description, stackId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create panel: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+}
 
 // func (handler *boardHandler) GetAssignedCards(writer http.ResponseWriter, request *http.Request) {
 
