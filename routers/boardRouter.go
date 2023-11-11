@@ -62,14 +62,14 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 
 	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetStacks))).Methods("GET")
 	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateStack))).Methods("POST")
-	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStack))).Methods("GET");
+	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStack))).Methods("GET")
 	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateStacks))).Methods("PUT");
 	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteStacks))).Methods("DELETE");
 	// handler.router.Handle(fmt.Sprintf("%s/{stackId}/details", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteStack))).Methods("GET")
 
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET")
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST")
-	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET");
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET")
 	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT");
 	// handler.router.Handle(fmt.Sprintf("%s{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE");
 
@@ -164,7 +164,7 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	}
 
 	ctx := request.Context()
-	org, err := handler.controller.GetBoardById(ctx, boardId)
+	board, err := handler.controller.GetBoardById(ctx, boardId)
 	if err != nil {
 		if err.Error() == sql.ErrNoRows.Error() {
 			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
@@ -174,7 +174,7 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	if org.IsPrivate {
+	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
 		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
 		if err != nil {
@@ -189,7 +189,7 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(org)
+	json.NewEncoder(writer).Encode(board)
 }
 
 func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, request *http.Request) {
@@ -211,7 +211,7 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 	}
 
 	ctx := request.Context()
-	org, err := handler.controller.GetCompleteBoardById(ctx, boardId)
+	board, err := handler.controller.GetCompleteBoardById(ctx, boardId)
 	if err != nil {
 		if err.Error() == sql.ErrNoRows.Error() {
 			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
@@ -221,7 +221,7 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 		return
 	}
 
-	if org.IsPrivate {
+	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
 		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
 		if err != nil {
@@ -236,7 +236,7 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(org)
+	json.NewEncoder(writer).Encode(board)
 }
 
 func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *http.Request) {
@@ -612,6 +612,64 @@ func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *ht
 	writer.WriteHeader(http.StatusCreated)
 }
 
+func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	stackId := params["stackId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	board, err := handler.controller.GetBoardById(ctx, boardId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if board.IsPrivate {
+		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
+		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if !canReadBoard {
+			http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+			return
+		}
+	}
+
+	stack, err := handler.controller.GetStackById(ctx, stackId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No stack found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get stack: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(stack)
+}
+
 func (handler *boardHandler) GetCards(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
@@ -683,6 +741,63 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+}
+func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	cardId := params["cardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	board, err := handler.controller.GetBoardById(ctx, boardId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if board.IsPrivate {
+		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
+		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if !canReadBoard {
+			http.Error(writer, fmt.Sprintf("User does not have permission to read board with id: %s", boardId), http.StatusForbidden)
+			return
+		}
+	}
+
+	stack, err := handler.controller.GetCardById(ctx, cardId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No card found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get card: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(stack)
 }
 
 // func (handler *boardHandler) GetAssignedCards(writer http.ResponseWriter, request *http.Request) {

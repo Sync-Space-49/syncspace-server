@@ -30,3 +30,14 @@ func (c *Controller) CreateStack(ctx context.Context, title string, panelId stri
 	}
 	return nil
 }
+
+func (c *Controller) GetStackById(ctx context.Context, stackId string) (*Stack, error) {
+	stack := Stack{}
+	err := c.db.DB.GetContext(ctx, &stack, `
+		SELECT * FROM Stacks WHERE id=$1;
+	`, stackId)
+	if err != nil {
+		return nil, err
+	}
+	return &stack, nil
+}

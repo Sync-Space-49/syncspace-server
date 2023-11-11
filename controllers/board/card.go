@@ -30,3 +30,14 @@ func (c *Controller) CreateCard(ctx context.Context, title string, description s
 	}
 	return nil
 }
+
+func (c *Controller) GetCardById(ctx context.Context, cardId string) (*Card, error) {
+	card := Card{}
+	err := c.db.DB.GetContext(ctx, &card, `
+		SELECT * FROM Cards WHERE id=$1;
+	`, cardId)
+	if err != nil {
+		return nil, err
+	}
+	return &card, nil
+}
