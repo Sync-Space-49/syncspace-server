@@ -650,6 +650,13 @@ func (handler *boardHandler) GetCompletePanel(writer http.ResponseWriter, reques
 	}
 
 	panel, err := handler.controller.GetCompletePanelById(ctx, panelId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No panel with id %s found", panelId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get panel: %s", err.Error()), http.StatusInternalServerError)
+		}
+	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(panel)
@@ -900,6 +907,13 @@ func (handler *boardHandler) GetCompleteStack(writer http.ResponseWriter, reques
 	}
 
 	stack, err := handler.controller.GetCompleteStackById(ctx, stackId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No stack with id %s found", stackId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get stack: %s", err.Error()), http.StatusInternalServerError)
+		}
+	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(stack)
