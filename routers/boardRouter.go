@@ -57,6 +57,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(panelsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanels))).Methods("GET")
 	handler.router.Handle(panelsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreatePanel))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanel))).Methods("GET")
+	// TODO: make sure user updates to a valid position
 	handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdatePanel))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeletePanel))).Methods("DELETE")
 	handler.router.Handle(fmt.Sprintf("%s/{panelId}/details", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompletePanel))).Methods("GET")
@@ -64,6 +65,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetStacks))).Methods("GET")
 	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateStack))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStack))).Methods("GET")
+	// TODO: make sure user updates to a valid position
 	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateStack))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteStack))).Methods("DELETE")
 	handler.router.Handle(fmt.Sprintf("%s/{stackId}/details", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteStack))).Methods("GET")
@@ -71,6 +73,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET")
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET")
+	// TODO: make sure user updates to a valid position
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE")
 
@@ -193,53 +196,6 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	json.NewEncoder(writer).Encode(board)
 }
 
-func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, request *http.Request) {
-	params := mux.Vars(request)
-	organizationId := params["organizationId"]
-	boardId := params["boardId"]
-
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
-	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
-		return
-	}
-
-	ctx := request.Context()
-	board, err := handler.controller.GetCompleteBoardById(ctx, boardId)
-	if err != nil {
-		if err.Error() == sql.ErrNoRows.Error() {
-			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
-		} else {
-			http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	if board.IsPrivate {
-		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-		if !canReadBoard {
-			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
-			return
-		}
-	}
-
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(board)
-}
-
 func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
@@ -325,6 +281,53 @@ func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *ht
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+}
+
+func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	board, err := handler.controller.GetCompleteBoardById(ctx, boardId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if board.IsPrivate {
+		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
+		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if !canReadBoard {
+			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
+			return
+		}
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(board)
 }
 
 func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, request *http.Request) {
@@ -717,7 +720,7 @@ func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *ht
 
 	err = handler.controller.CreateStack(request.Context(), title, panelId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to create panel: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to create stack: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
@@ -968,12 +971,13 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 
 	err = handler.controller.CreateCard(request.Context(), title, description, stackId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to create panel: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
 }
+
 func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
