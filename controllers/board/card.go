@@ -41,3 +41,42 @@ func (c *Controller) GetCardById(ctx context.Context, cardId string) (*Card, err
 	}
 	return &card, nil
 }
+
+func (c *Controller) UpdateCardById(ctx context.Context, stackId string, cardId string, title string, description string, position *int) error {
+	card, err := c.GetCardById(ctx, stackId)
+	if err != nil {
+		return err
+	}
+	if title == "" {
+		title = card.Title
+	}
+	if description == "" {
+		description = card.Description
+	}
+	if position == nil {
+		position = &card.Position
+	}
+
+	if *position != card.Position {
+		if *position > card.Position {
+			_, err = c.db.DB.ExecContext(ctx, `
+				UPDATE Cards SET position=position-1 WHERE stack_id=$1 AND position>$2 AND position<=$3;
+			`, stackId, card.Position, *position)
+		} else {
+			_, err = c.db.DB.ExecContext(ctx, `
+				UPDATE Cards SET position=position+1 WHERE stack_id=$1 AND position<$2 AND position>=$3;
+			`, stackId, card.Position, *position)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
+		UPDATE Cards SET title=$1, description=$2, position=$3 WHERE id=$4;
+	`, title, description, *position, cardId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

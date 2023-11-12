@@ -57,11 +57,11 @@ func (c *Controller) UpdateStackById(ctx context.Context, panelId string, stackI
 	if *position != stack.Position {
 		if *position > stack.Position {
 			_, err = c.db.DB.ExecContext(ctx, `
-				UPDATE Panels SET position=position-1 WHERE panel_id=$1 AND position>$2 AND position<=$3;
+				UPDATE Stacks SET position=position-1 WHERE panel_id=$1 AND position>$2 AND position<=$3;
 			`, panelId, stack.Position, *position)
 		} else {
 			_, err = c.db.DB.ExecContext(ctx, `
-				UPDATE Panels SET position=position+1 WHERE panel_id=$1 AND position<$2 AND position>=$3;
+				UPDATE Stacks SET position=position+1 WHERE panel_id=$1 AND position<$2 AND position>=$3;
 			`, panelId, stack.Position, *position)
 		}
 		if err != nil {
@@ -69,7 +69,7 @@ func (c *Controller) UpdateStackById(ctx context.Context, panelId string, stackI
 		}
 	}
 	_, err = c.db.DB.ExecContext(ctx, `
-		UPDATE Stack SET title=$1, position=$2 WHERE id=$3;
+		UPDATE Stacks SET title=$1, position=$2 WHERE id=$3;
 	`, title, *position, stackId)
 	if err != nil {
 		return err

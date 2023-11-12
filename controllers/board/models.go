@@ -22,7 +22,7 @@ type Card struct {
 	Id          uuid.UUID `db:"id" json:"id"`
 	Title       string    `db:"title" json:"title"`
 	Description string    `db:"description" json:"description"`
-	Postition   int       `db:"position" json:"position"`
+	Position    int       `db:"position" json:"position"`
 	StackId     uuid.UUID `db:"stack_id" json:"stack_id"`
 }
 
@@ -49,19 +49,19 @@ type Board struct {
 }
 
 type CompleteStack struct {
-	Id        uuid.UUID `db:"id" json:"id"`
-	Title     string    `db:"title" json:"title"`
-	Postition int       `db:"position" json:"position"`
-	PanelId   uuid.UUID `db:"panel_id" json:"panel_id"`
-	Cards     []Card    `json:"cards"`
+	Id       uuid.UUID `db:"id" json:"id"`
+	Title    string    `db:"title" json:"title"`
+	Position int       `db:"position" json:"position"`
+	PanelId  uuid.UUID `db:"panel_id" json:"panel_id"`
+	Cards    []Card    `json:"cards"`
 }
 
 type CompletePanel struct {
-	Id        uuid.UUID       `db:"id" json:"id"`
-	Title     string          `db:"title" json:"title"`
-	Postition int             `db:"position" json:"position"`
-	BoardId   uuid.UUID       `db:"board_id" json:"board_id"`
-	Stacks    []CompleteStack `json:"stacks"`
+	Id       uuid.UUID       `db:"id" json:"id"`
+	Title    string          `db:"title" json:"title"`
+	Position int             `db:"position" json:"position"`
+	BoardId  uuid.UUID       `db:"board_id" json:"board_id"`
+	Stacks   []CompleteStack `json:"stacks"`
 }
 
 type CompleteBoard struct {

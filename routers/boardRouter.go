@@ -71,7 +71,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET")
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET")
-	// handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT")
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT")
 	// handler.router.Handle(fmt.Sprintf("%s{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE");
 
 	return handler.router
@@ -732,12 +732,12 @@ func (handler *boardHandler) UpdateStack(writer http.ResponseWriter, request *ht
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
 	updateStackPerm := fmt.Sprintf("org%s:board%s:update_stack", organizationId, boardId)
-	canStackPanel, err := auth.HasPermission(userId, updateStackPerm)
+	canUpdateStack, err := auth.HasPermission(userId, updateStackPerm)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
 		return
 	}
-	if !canStackPanel {
+	if !canUpdateStack {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update stack %s in board with id: %s", userId, stackId, boardId), http.StatusForbidden)
 		return
 	}
@@ -880,6 +880,48 @@ func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.R
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(stack)
+}
+
+func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	stackId := params["stackId"]
+	cardId := params["cardId"]
+
+	title := request.FormValue("title")
+	description := request.FormValue("description")
+	var position *int
+	if request.FormValue("position") != "" {
+		var err error
+		*position, err = strconv.Atoi(request.FormValue("position"))
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to parse position: %s", err.Error()), http.StatusBadRequest)
+			return
+		}
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	updateCardPerm := fmt.Sprintf("org%s:board%s:update_card", organizationId, boardId)
+	canUpdateCard, err := auth.HasPermission(userId, updateCardPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canUpdateCard {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update card %s in board with id: %s", userId, cardId, boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err = handler.controller.UpdateCardById(ctx, stackId, cardId, title, description, position)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to update card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
 }
 
 // func (handler *boardHandler) GetAssignedCards(writer http.ResponseWriter, request *http.Request) {
