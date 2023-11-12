@@ -17,34 +17,34 @@ CREATE TABLE IF NOT EXISTS Organizations (
 
 CREATE TABLE IF NOT EXISTS Boards (
     id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    title           VARCHAR(255) NOT NULL, -- Changed to Title from Name to match Lists and Cards
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- 'default' calling a function may not work? if not j remove the function call
+    title           VARCHAR(255) NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     modified_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_private      BOOLEAN DEFAULT FALSE,                  -- defaults to public
-    organization_id UUID, FOREIGN KEY (organization_id) REFERENCES Organizations(id),
+    organization_id UUID, FOREIGN KEY (organization_id) REFERENCES Organizations(id) ON DELETE CASCADE,
     owner_id        VARCHAR(64) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Panels ( -- Changed to Panels from Lists
+CREATE TABLE IF NOT EXISTS Panels (
     id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title           VARCHAR(255) NOT NULL,
-    position        SMALLINT, -- changed from int to smallint (will not have more than 32767 lists/cards/etc)
-    board_id        UUID, FOREIGN KEY (board_id) REFERENCES Boards(id)
+    position        SMALLINT,
+    board_id        UUID, FOREIGN KEY (board_id) REFERENCES Boards(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Stacks (
     id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title           VARCHAR(255) NOT NULL,
-    position        SMALLINT, -- changed from int to smallint (will not have more than 32767 lists/cards/etc)
-    panel_id        UUID, FOREIGN KEY (panel_id) REFERENCES Panels(id)
+    position        SMALLINT,
+    panel_id        UUID, FOREIGN KEY (panel_id) REFERENCES Panels(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Cards (
     id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title           VARCHAR(255) NOT NULL,
     description     TEXT,
-    position        SMALLINT, -- changed from int to smallint (will not have more than 32767 lists/cards/etc)
-    stack_id        UUID, FOREIGN KEY (stack_id) REFERENCES Stacks(id)
+    position        SMALLINT,
+    stack_id        UUID, FOREIGN KEY (stack_id) REFERENCES Stacks(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Assigned_Cards (
