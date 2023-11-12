@@ -80,3 +80,23 @@ func (c *Controller) UpdatePanelById(ctx context.Context, boardId string, panelI
 
 	return nil
 }
+
+func (c *Controller) DeletePanelById(ctx context.Context, boardId string, panelId string) error {
+	panel, err := c.GetPanelById(ctx, panelId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
+		DELETE FROM Panels WHERE id=$1;
+	`, panelId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
+		UPDATE Panels SET position=position-1 WHERE board_id=$1 AND position>$2;
+	`, boardId, panel.Position)
+	if err != nil {
+		return err
+	}
+	return nil
+}

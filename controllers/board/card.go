@@ -80,3 +80,23 @@ func (c *Controller) UpdateCardById(ctx context.Context, stackId string, cardId 
 
 	return nil
 }
+
+func (c *Controller) DeleteCardById(ctx context.Context, stackId string, cardId string) error {
+	card, err := c.GetCardById(ctx, cardId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
+		DELETE FROM Cards WHERE id=$1;
+	`, cardId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
+		UPDATE Cards SET position=position-1 WHERE stack_id=$1 AND position>$2;
+	`, stackId, card.Position)
+	if err != nil {
+		return err
+	}
+	return nil
+}

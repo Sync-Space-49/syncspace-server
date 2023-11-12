@@ -58,21 +58,21 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(panelsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreatePanel))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetPanel))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdatePanel))).Methods("PUT")
-	// handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeletePanel))).Methods("DELETE");
+	handler.router.Handle(fmt.Sprintf("%s/{panelId}", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeletePanel))).Methods("DELETE")
 	// handler.router.Handle(fmt.Sprintf("%s/{panelId}/details", panelsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompletePanel))).Methods("GET")
 
 	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetStacks))).Methods("GET")
 	handler.router.Handle(stacksPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateStack))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetStack))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateStack))).Methods("PUT")
-	// handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteStacks))).Methods("DELETE");
+	handler.router.Handle(fmt.Sprintf("%s/{stackId}", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteStack))).Methods("DELETE")
 	// handler.router.Handle(fmt.Sprintf("%s/{stackId}/details", stacksPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteStack))).Methods("GET")
 
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET")
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT")
-	// handler.router.Handle(fmt.Sprintf("%s{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE");
+	handler.router.Handle(fmt.Sprintf("%s{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE")
 
 	return handler.router
 }
@@ -247,7 +247,6 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 
 	title := request.FormValue("title")
 	ownerId := request.FormValue("ownerId")
-	// fmt.Printf("ownerId: %s", ownerId)
 
 	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
 	if err != nil {
@@ -257,7 +256,6 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
-	// fmt.Printf("1 userId: %s", userId)
 
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
 	updateBoardPerm := fmt.Sprintf("org%s:board%s:update", organizationId, boardId)
@@ -297,7 +295,6 @@ func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *ht
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
-	// fmt.Printf("1 userId: %s", userId)
 
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
 	deleteBoardPerm := fmt.Sprintf("org%s:board%s:delete", organizationId, boardId)
@@ -352,9 +349,6 @@ func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, reques
 	userId := token.RegisteredClaims.Subject
 	addUsersPerm := fmt.Sprintf("org%s:board%s:add_members", organizationId, boardId)
 	canAddUsers, err := auth.HasPermission(userId, addUsersPerm)
-
-	// fmt.Println("addUsersPerm: ", addUsersPerm)
-	// fmt.Println("canAddcanAddUsers: ", canAddUsers)
 
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
@@ -567,7 +561,7 @@ func (handler *boardHandler) UpdatePanel(writer http.ResponseWriter, request *ht
 		return
 	}
 	if !canUpdatePanel {
-		http.Error(writer, fmt.Sprintf("User with id %s  does not have permission to update panel %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update panel %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -578,7 +572,36 @@ func (handler *boardHandler) UpdatePanel(writer http.ResponseWriter, request *ht
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusCreated)
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *boardHandler) DeletePanel(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	panelId := params["panelId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	deletePanelPerm := fmt.Sprintf("org%s:board%s:delete_panel", organizationId, boardId)
+	canDeletePanel, err := auth.HasPermission(userId, deletePanelPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canDeletePanel {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete panel %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err = handler.controller.DeletePanelById(ctx, boardId, panelId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to delete panel with id %s: %s", panelId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *boardHandler) GetStacks(writer http.ResponseWriter, request *http.Request) {
@@ -749,7 +772,37 @@ func (handler *boardHandler) UpdateStack(writer http.ResponseWriter, request *ht
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusCreated)
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *boardHandler) DeleteStack(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	panelId := params["panelId"]
+	stackId := params["stackId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	deleteStackPerm := fmt.Sprintf("org%s:board%s:delete_stack", organizationId, boardId)
+	canDeleteStack, err := auth.HasPermission(userId, deleteStackPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canDeleteStack {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete stack %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err = handler.controller.DeleteStackById(ctx, panelId, stackId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to delete stack with id %s: %s", stackId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *boardHandler) GetCards(writer http.ResponseWriter, request *http.Request) {
@@ -921,7 +974,37 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusCreated)
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *boardHandler) DeleteCard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	stackId := params["stackId"]
+	cardId := params["cardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	userId := token.RegisteredClaims.Subject
+	deleteCardPerm := fmt.Sprintf("org%s:board%s:delete_card", organizationId, boardId)
+	canDeleteCard, err := auth.HasPermission(userId, deleteCardPerm)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !canDeleteCard {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err = handler.controller.DeleteCardById(ctx, stackId, cardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to delete card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 // func (handler *boardHandler) GetAssignedCards(writer http.ResponseWriter, request *http.Request) {

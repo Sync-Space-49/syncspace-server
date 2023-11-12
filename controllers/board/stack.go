@@ -77,3 +77,23 @@ func (c *Controller) UpdateStackById(ctx context.Context, panelId string, stackI
 
 	return nil
 }
+
+func (c *Controller) DeleteStackById(ctx context.Context, panelId string, stackId string) error {
+	stack, err := c.GetStackById(ctx, stackId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
+		DELETE FROM Stacks WHERE id=$1;
+	`, stackId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
+		UPDATE Stacks SET position=position-1 WHERE panel_id=$1 AND position>$2;
+	`, panelId, stack.Position)
+	if err != nil {
+		return err
+	}
+	return nil
+}
