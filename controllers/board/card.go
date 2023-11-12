@@ -60,11 +60,11 @@ func (c *Controller) UpdateCardById(ctx context.Context, stackId string, cardId 
 	if *position != card.Position {
 		if *position > card.Position {
 			_, err = c.db.DB.ExecContext(ctx, `
-				UPDATE Cards SET position=position-1 WHERE stack_id=$1 AND position>$2 AND position<=$3;
+				UPDATE Cards SET position=position-1, stack_id=$1 WHERE stack_id=$1 AND position>$2 AND position<=$3;
 			`, stackId, card.Position, *position)
 		} else {
 			_, err = c.db.DB.ExecContext(ctx, `
-				UPDATE Cards SET position=position+1 WHERE stack_id=$1 AND position<$2 AND position>=$3;
+				UPDATE Cards SET position=position+1, stack_id=$1 WHERE stack_id=$1 AND position<$2 AND position>=$3;
 			`, stackId, card.Position, *position)
 		}
 		if err != nil {
