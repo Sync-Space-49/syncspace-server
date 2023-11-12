@@ -2,6 +2,7 @@ package board
 
 import (
 	"context"
+	"errors"
 )
 
 func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]Panel, error) {
@@ -58,6 +59,17 @@ func (c *Controller) UpdatePanelById(ctx context.Context, boardId string, panelI
 	}
 
 	if *position != panel.Position {
+		var maxPosition int
+		err := c.db.DB.GetContext(ctx, &maxPosition, `
+			SELECT COALESCE(MAX(position), 0) AS max_position FROM Panels where board_id=$1;
+		`, boardId)
+		if err != nil {
+			return err
+		}
+		if *position > maxPosition {
+			return errors.New("position is out of range")
+		}
+
 		if *position > panel.Position {
 			_, err = c.db.DB.ExecContext(ctx, `
 				UPDATE Panels SET position=position-1 WHERE board_id=$1 AND position>$2 AND position<=$3;

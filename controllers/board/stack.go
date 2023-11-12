@@ -1,6 +1,9 @@
 package board
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 func (c *Controller) GetStacksByPanelId(ctx context.Context, panelId string) (*[]Stack, error) {
 	stacks := make([]Stack, 0)
@@ -55,6 +58,17 @@ func (c *Controller) UpdateStackById(ctx context.Context, panelId string, stackI
 	}
 
 	if *position != stack.Position {
+		var maxPosition int
+		err := c.db.DB.GetContext(ctx, &maxPosition, `
+			SELECT COALESCE(MAX(position), 0) AS max_position FROM Stacks where panel_id=$1;
+		`, panelId)
+		if err != nil {
+			return err
+		}
+		if *position > maxPosition {
+			return errors.New("position is out of range")
+		}
+
 		if *position > stack.Position {
 			_, err = c.db.DB.ExecContext(ctx, `
 				UPDATE Stacks SET position=position-1 WHERE panel_id=$1 AND position>$2 AND position<=$3;

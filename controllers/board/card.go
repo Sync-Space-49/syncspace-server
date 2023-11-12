@@ -1,6 +1,9 @@
 package board
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]Card, error) {
 	cards := make([]Card, 0)
@@ -58,6 +61,17 @@ func (c *Controller) UpdateCardById(ctx context.Context, stackId string, cardId 
 	}
 
 	if *position != card.Position {
+		var maxPosition int
+		err := c.db.DB.GetContext(ctx, &maxPosition, `
+			SELECT COALESCE(MAX(position), 0) AS max_position FROM Cards where stack_id=$1;
+		`, stackId)
+		if err != nil {
+			return err
+		}
+		if *position > maxPosition {
+			return errors.New("position is out of range")
+		}
+
 		if *position > card.Position {
 			_, err = c.db.DB.ExecContext(ctx, `
 				UPDATE Cards SET position=position-1, stack_id=$1 WHERE stack_id=$1 AND position>$2 AND position<=$3;
