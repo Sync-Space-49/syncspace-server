@@ -100,3 +100,26 @@ func (c *Controller) DeletePanelById(ctx context.Context, boardId string, panelI
 	}
 	return nil
 }
+
+func (c *Controller) GetCompletePanelById(ctx context.Context, panelId string) (*CompletePanel, error) {
+	panel, err := c.GetPanelById(ctx, panelId)
+	if err != nil {
+		return nil, err
+	}
+	completePanel := CopyToCompletePanel(*panel)
+	completePanel.Stacks = make([]CompleteStack, 0)
+	stacks, err := c.GetStacksByPanelId(ctx, panel.Id.String())
+	if err != nil {
+		return nil, err
+	}
+	for _, stack := range *stacks {
+		completeStack := CopyToCompleteStack(stack)
+		cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
+		if err != nil {
+			return nil, err
+		}
+		completeStack.Cards = *cards
+		completePanel.Stacks = append(completePanel.Stacks, completeStack)
+	}
+	return &completePanel, nil
+}

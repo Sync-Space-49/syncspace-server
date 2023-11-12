@@ -97,3 +97,17 @@ func (c *Controller) DeleteStackById(ctx context.Context, panelId string, stackI
 	}
 	return nil
 }
+
+func (c *Controller) GetCompleteStackById(ctx context.Context, boardId string) (*CompleteStack, error) {
+	stack, err := c.GetStackById(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+	completeStack := CopyToCompleteStack(*stack)
+	cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
+	if err != nil {
+		return nil, err
+	}
+	completeStack.Cards = *cards
+	return &completeStack, nil
+}
