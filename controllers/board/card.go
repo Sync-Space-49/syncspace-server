@@ -26,7 +26,7 @@ func (c *Controller) CreateCard(ctx context.Context, title string, description s
 	}
 
 	_, err = c.db.DB.ExecContext(ctx, `
-		INSERT INTO Cards (title, description, position, stack_id) VALUES ($1, $2, $3. $4);
+		INSERT INTO Cards (title, description, position, stack_id) VALUES ($1, $2, $3, $4);
 	`, title, description, nextPosition, stackId)
 	if err != nil {
 		return err
