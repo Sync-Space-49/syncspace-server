@@ -1069,7 +1069,7 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 		}
 		position = &tempPosition
 	}
-	newStackId := request.FormValue("stackId")
+	newStackId := request.FormValue("stack_id")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject

@@ -46,7 +46,7 @@ func (c *Controller) GetCardById(ctx context.Context, cardId string) (*Card, err
 }
 
 func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId string, cardId string, newStackId string, title string, description string, position *int) error {
-	card, err := c.GetCardById(ctx, stackId)
+	card, err := c.GetCardById(ctx, cardId)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,6 @@ func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId
 	if position == nil {
 		position = &card.Position
 	}
-	// TODO: validate stackId is in the same board as the card
 	if newStackId == "" {
 		newStackId = stackId
 	} else {
@@ -95,20 +94,20 @@ func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId
 
 		if *position > card.Position {
 			_, err = c.db.DB.ExecContext(ctx, `
-				UPDATE Cards SET position=position-1, stack_id=$1 WHERE stack_id=$2 AND position>$3 AND position<=$4;
-			`, newStackId, stackId, card.Position, *position)
+				UPDATE Cards SET position=position-1 WHERE stack_id=$1 AND position>$2 AND position<=$3;
+			`, newStackId, card.Position, *position)
 		} else {
 			_, err = c.db.DB.ExecContext(ctx, `
-				UPDATE Cards SET position=position+1, stack_id=$1 WHERE stack_id=$2 AND position<$3 AND position>=$4;
-			`, newStackId, stackId, card.Position, *position)
+				UPDATE Cards SET position=position+1 WHERE stack_id=$1 AND position<$2 AND position>=$3;
+			`, newStackId, card.Position, *position)
 		}
 		if err != nil {
 			return err
 		}
 	}
 	_, err = c.db.DB.ExecContext(ctx, `
-		UPDATE Cards SET title=$1, description=$2, position=$3 WHERE id=$4;
-	`, title, description, *position, cardId)
+		UPDATE Cards SET title=$1, description=$2, position=$3, stack_id=$4 WHERE id=$5;
+	`, title, description, *position, newStackId, cardId)
 	if err != nil {
 		return err
 	}
