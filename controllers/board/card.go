@@ -45,7 +45,7 @@ func (c *Controller) GetCardById(ctx context.Context, cardId string) (*Card, err
 	return &card, nil
 }
 
-func (c *Controller) UpdateCardById(ctx context.Context, stackId string, cardId string, title string, description string, position *int) error {
+func (c *Controller) UpdateCardById(ctx context.Context, stackId string, newStackId string, cardId string, title string, description string, position *int) error {
 	card, err := c.GetCardById(ctx, stackId)
 	if err != nil {
 		return err
@@ -59,12 +59,15 @@ func (c *Controller) UpdateCardById(ctx context.Context, stackId string, cardId 
 	if position == nil {
 		position = &card.Position
 	}
+	if newStackId == "" {
+		newStackId = stackId
+	}
 
 	if *position != card.Position {
 		var maxPosition int
 		err := c.db.DB.GetContext(ctx, &maxPosition, `
 			SELECT COALESCE(MAX(position), 0) AS max_position FROM Cards where stack_id=$1;
-		`, stackId)
+		`, newStackId)
 		if err != nil {
 			return err
 		}
@@ -75,11 +78,11 @@ func (c *Controller) UpdateCardById(ctx context.Context, stackId string, cardId 
 		if *position > card.Position {
 			_, err = c.db.DB.ExecContext(ctx, `
 				UPDATE Cards SET position=position-1, stack_id=$1 WHERE stack_id=$1 AND position>$2 AND position<=$3;
-			`, stackId, card.Position, *position)
+			`, newStackId, card.Position, *position)
 		} else {
 			_, err = c.db.DB.ExecContext(ctx, `
 				UPDATE Cards SET position=position+1, stack_id=$1 WHERE stack_id=$1 AND position<$2 AND position>=$3;
-			`, stackId, card.Position, *position)
+			`, newStackId, card.Position, *position)
 		}
 		if err != nil {
 			return err
