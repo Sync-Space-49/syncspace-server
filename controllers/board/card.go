@@ -45,7 +45,7 @@ func (c *Controller) GetCardById(ctx context.Context, cardId string) (*Card, err
 	return &card, nil
 }
 
-func (c *Controller) UpdateCardById(ctx context.Context, stackId string, newStackId string, cardId string, title string, description string, position *int) error {
+func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId string, cardId string, newStackId string, title string, description string, position *int) error {
 	card, err := c.GetCardById(ctx, stackId)
 	if err != nil {
 		return err
@@ -59,8 +59,26 @@ func (c *Controller) UpdateCardById(ctx context.Context, stackId string, newStac
 	if position == nil {
 		position = &card.Position
 	}
+	// TODO: validate stackId is in the same board as the card
 	if newStackId == "" {
 		newStackId = stackId
+	} else {
+		var isStackInBoard bool
+		err := c.db.DB.GetContext(ctx, &isStackInBoard, `
+			SELECT EXISTS(
+				SELECT 1
+					FROM Stacks s
+						JOIN panels p on s.panel_id = p.id
+						JOIN boards b on p.board_id = b.id
+					WHERE s.id = $1 AND b.id = $2
+			);
+		`, newStackId, boardId)
+		if err != nil {
+			return err
+		}
+		if !isStackInBoard {
+			return errors.New("stack is not in the same board")
+		}
 	}
 
 	if *position != card.Position {
@@ -77,12 +95,12 @@ func (c *Controller) UpdateCardById(ctx context.Context, stackId string, newStac
 
 		if *position > card.Position {
 			_, err = c.db.DB.ExecContext(ctx, `
-				UPDATE Cards SET position=position-1, stack_id=$1 WHERE stack_id=$1 AND position>$2 AND position<=$3;
-			`, newStackId, card.Position, *position)
+				UPDATE Cards SET position=position-1, stack_id=$1 WHERE stack_id=$2 AND position>$3 AND position<=$4;
+			`, newStackId, stackId, card.Position, *position)
 		} else {
 			_, err = c.db.DB.ExecContext(ctx, `
-				UPDATE Cards SET position=position+1, stack_id=$1 WHERE stack_id=$1 AND position<$2 AND position>=$3;
-			`, newStackId, card.Position, *position)
+				UPDATE Cards SET position=position+1, stack_id=$1 WHERE stack_id=$2 AND position<$3 AND position>=$4;
+			`, newStackId, stackId, card.Position, *position)
 		}
 		if err != nil {
 			return err

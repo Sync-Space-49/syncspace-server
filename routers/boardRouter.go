@@ -1085,7 +1085,7 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 	}
 
 	ctx := request.Context()
-	err = handler.controller.UpdateCardById(ctx, stackId, newStackId, cardId, title, description, position)
+	err = handler.controller.UpdateCardById(ctx, boardId, stackId, cardId, newStackId, title, description, position)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
 		return
