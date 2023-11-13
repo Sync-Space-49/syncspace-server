@@ -68,7 +68,7 @@ func (c *Controller) UpdateCardById(ctx context.Context, stackId string, cardId 
 		if err != nil {
 			return err
 		}
-		if *position > maxPosition {
+		if *position > maxPosition || *position < 0 {
 			return errors.New("position is out of range")
 		}
 
