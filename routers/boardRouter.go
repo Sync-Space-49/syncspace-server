@@ -546,11 +546,12 @@ func (handler *boardHandler) UpdatePanel(writer http.ResponseWriter, request *ht
 	var position *int
 	if request.FormValue("position") != "" {
 		var err error
-		*position, err = strconv.Atoi(request.FormValue("position"))
+		tempPosition, err := strconv.Atoi(request.FormValue("position"))
 		if err != nil {
 			http.Error(writer, fmt.Sprintf("Failed to parse position: %s", err.Error()), http.StatusBadRequest)
 			return
 		}
+		position = &tempPosition
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
@@ -801,11 +802,12 @@ func (handler *boardHandler) UpdateStack(writer http.ResponseWriter, request *ht
 	var position *int
 	if request.FormValue("position") != "" {
 		var err error
-		*position, err = strconv.Atoi(request.FormValue("position"))
+		tempPosition, err := strconv.Atoi(request.FormValue("position"))
 		if err != nil {
 			http.Error(writer, fmt.Sprintf("Failed to parse position: %s", err.Error()), http.StatusBadRequest)
 			return
 		}
+		position = &tempPosition
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
@@ -1060,11 +1062,12 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 	var position *int
 	if request.FormValue("position") != "" {
 		var err error
-		*position, err = strconv.Atoi(request.FormValue("position"))
+		tempPosition, err := strconv.Atoi(request.FormValue("position"))
 		if err != nil {
 			http.Error(writer, fmt.Sprintf("Failed to parse position: %s", err.Error()), http.StatusBadRequest)
 			return
 		}
+		position = &tempPosition
 	}
 	newStackId := request.FormValue("stackId")
 
