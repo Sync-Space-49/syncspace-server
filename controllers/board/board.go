@@ -11,8 +11,8 @@ import (
 )
 
 func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, orgId string, userId string) (*[]Board, error) {
-	var orgBoards []Board
-	err := c.db.DB.GetContext(ctx, &orgBoards, `
+	orgBoards := make([]Board, 0)
+	err := c.db.DB.SelectContext(ctx, &orgBoards, `
 		SELECT * FROM Boards WHERE organization_id=$1;
 	`, orgId)
 	if err != nil {
@@ -57,23 +57,31 @@ func (c *Controller) GetCompleteBoardById(ctx context.Context, boardId string) (
 	if err != nil {
 		return nil, err
 	}
-	for _, panel := range *panels {
-		completePanel := CopyToCompletePanel(panel)
-		completePanel.Stacks = make([]CompleteStack, 0)
-		stacks, err := c.GetStacksByPanelId(ctx, panel.Id.String())
-		if err != nil {
-			return nil, err
-		}
-		for _, stack := range *stacks {
-			completeStack := CopyToCompleteStack(stack)
-			cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
+	if len(*panels) > 0 {
+		for _, panel := range *panels {
+			completePanel := CopyToCompletePanel(panel)
+			completePanel.Stacks = make([]CompleteStack, 0)
+			stacks, err := c.GetStacksByPanelId(ctx, panel.Id.String())
 			if err != nil {
 				return nil, err
 			}
-			completeStack.Cards = *cards
-			completePanel.Stacks = append(completePanel.Stacks, completeStack)
+			if len(*stacks) == 0 {
+				for _, stack := range *stacks {
+					completeStack := CopyToCompleteStack(stack)
+					cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
+					if err != nil {
+						return nil, err
+					}
+					completeStack.Cards = *cards
+					completePanel.Stacks = append(completePanel.Stacks, completeStack)
+				}
+			} else {
+				completePanel.Stacks = make([]CompleteStack, 0)
+			}
+			completeBoard.Panels = append(completeBoard.Panels, completePanel)
 		}
-		completeBoard.Panels = append(completeBoard.Panels, completePanel)
+	} else {
+		completeBoard.Panels = make([]CompletePanel, 0)
 	}
 	return &completeBoard, nil
 }
