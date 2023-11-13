@@ -65,7 +65,7 @@ func (c *Controller) GetCompleteBoardById(ctx context.Context, boardId string) (
 			if err != nil {
 				return nil, err
 			}
-			if len(*stacks) == 0 {
+			if len(*stacks) > 0 {
 				for _, stack := range *stacks {
 					completeStack := CopyToCompleteStack(stack)
 					cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
