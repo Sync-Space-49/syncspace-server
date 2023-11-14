@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS Organizations (
     id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     owner_id        VARCHAR(64) NOT NULL,
     name            VARCHAR(255) NOT NULL,
-    description     TEXT
+    description     TEXT, 
+    ai_enabled      BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS Boards (
