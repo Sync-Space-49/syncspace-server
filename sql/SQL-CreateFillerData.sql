@@ -8,13 +8,15 @@
 
 SET TIMEZONE = "America/New_York"; -- sets timezone for timestamptz datatypes
 
+INSERT INTO Organizations(id, owner_id, name, description, ai_enabled) VALUES
+    ('69639276-a0bb-4a9c-b0b8-9b66b7aada4f', 'auth0|65296d21ab01a819c3034545', 'SyncSpace', 'This is the SyncSpace example organization description. This is a temporary description in filler data. ', true);
+
 INSERT INTO Organizations(id, owner_id, name, description) VALUES
-    ('69639276-a0bb-4a9c-b0b8-9b66b7aada4f', 'auth0|65296d21ab01a819c3034545', 'SyncSpace', 'This is the SyncSpace example organization description. This is a temporary description in filler data. '),
     ('060599b3-2893-4f43-8ce9-9595d6e93f37', 'auth0|65296d21ab01a819c3034545', 'BioQuest', 'Lorem ipsum, dolor sit amet consectetur adipisicing elit. Molestias aut, repellat ipsum facere voluptate dicta obcaecati deserunt nobis suscipit eaque?'),
     ('b6d82b16-2f89-4aa5-b73e-2a826aa77014', 'auth0|65296d21ab01a819c3034545', 'Some Recipe App', 'Lorem ipsum, vulputate eu scelerisque felis imperdiet proin fermentum leo vel orci porta non pulvinar neque laoreet.');
 
 INSERT INTO Boards(id, title, organization_id, owner_id) VALUES
-    ('db98f8ee-23b1-48e4-a913-19adc7af59ac', 'SyncSpace Main Board', '69639276-a0bb-4a9c-b0b8-9b66b7aada4f', 'auth0|65296d21ab01a819c3034545'),
+    ('db98f8ee-23b1-48e4-a913-19adc7af59ac', 'SyncSpace Main Board', '69639276-a0bb-4a9c-b0b8-9b66b7aada4f', 'auth0|65296d21ab01a819c3034545', 1),
     ('8c8b39ef-aa76-48c2-a0c6-f53b8debd999', 'A second, cooler board', '69639276-a0bb-4a9c-b0b8-9b66b7aada4f', 'auth0|65296d21ab01a819c3034545'),
     ('42708b4a-1e15-4ae5-b158-861f4a928d9c', 'BioQuest Main Board', '060599b3-2893-4f43-8ce9-9595d6e93f37', 'auth0|65412afb7c403dde6a228283'),
     ('ee8378ef-60f2-4baf-aaff-33a5c395ec5f', 'A second, cooler board', '060599b3-2893-4f43-8ce9-9595d6e93f37', 'auth0|65412afb7c403dde6a228283'),
