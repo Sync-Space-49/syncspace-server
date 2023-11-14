@@ -8,15 +8,15 @@ import (
 	"github.com/google/uuid"
 )
 
-func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description *string) (*Organization, error) {
+func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description *string, aiEnabled bool) (*Organization, error) {
 	var query string
 	if description == nil {
-		query = `INSERT INTO Organizations (id, owner_id, name) VALUES ($1, $2, $3);`
+		query = `INSERT INTO Organizations (id, owner_id, name, ai_enabled) VALUES ($1, $2, $3, $5);`
 	} else {
-		query = `INSERT INTO Organizations (id, owner_id, name, description) VALUES ($1, $2, $3, $4);`
+		query = `INSERT INTO Organizations (id, owner_id, name, description, ai_enabled) VALUES ($1, $2, $3, $4, $5);`
 	}
 	orgID := uuid.New().String()
-	_, err := c.db.DB.ExecContext(ctx, query, orgID, userId, title, description)
+	_, err := c.db.DB.ExecContext(ctx, query, orgID, userId, title, description, aiEnabled)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (c *Controller) GetOrganizationById(ctx context.Context, organizationId str
 	return &organization, nil
 }
 
-func (c *Controller) UpdateOrganizationById(ctx context.Context, organizationId string, title string, description string) error {
+func (c *Controller) UpdateOrganizationById(ctx context.Context, organizationId string, title string, description string, ai_enabled bool) error {
 	org, err := c.GetOrganizationById(ctx, organizationId)
 	if err != nil {
 		return err
@@ -153,8 +153,8 @@ func (c *Controller) UpdateOrganizationById(ctx context.Context, organizationId 
 	}
 
 	_, err = c.db.DB.ExecContext(ctx, `
-		UPDATE Organizations SET name=$1, description=$2 WHERE id=$3;
-	`, title, description, organizationId)
+		UPDATE Organizations SET name=$1, description=$2, ai_enabled=$3 WHERE id=$4;
+	`, title, description, ai_enabled, organizationId)
 	if err != nil {
 		return err
 	}
