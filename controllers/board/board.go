@@ -19,12 +19,15 @@ func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, tokenCustomClai
 		return nil, err
 	}
 
+	orgPrefix := fmt.Sprintf("org%s", orgId)
 	var viewableBoards []Board
 	for _, board := range orgBoards {
 		if board.IsPrivate {
-			readBoardPerm := fmt.Sprintf("org%s:board%s:read", orgId, board.Id)
+			readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, board.Id)
 			canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
-			if !canReadBoard {
+			boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+			isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
+			if !canReadBoard && !isBoardsAdmin {
 				continue
 			}
 		}

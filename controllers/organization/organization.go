@@ -65,7 +65,7 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 		Name:        fmt.Sprintf("org%s:create_boards", organizationId),
 		Description: fmt.Sprintf("Allows you to create boards in the organization with id %s", organizationId),
 	}
-	boardAdminPerm := auth.Permission{
+	boardsAdminPerm := auth.Permission{
 		Name:        fmt.Sprintf("org%s:boards_admin", organizationId),
 		Description: fmt.Sprintf("Allows you to so anything in regards to any board in organizaiton with id %s", organizationId),
 	}
@@ -93,7 +93,7 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 	orgMemberPermissions := []auth.Permission{
 		readPerm, createBoardsPerm,
 	}
-	orgOwnerPermissions := append(orgMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm, boardAdminPerm, createRolesPerm, editRolesPerm, deleteRolesPerm, addRolesPerm, removeRolesPerm)
+	orgOwnerPermissions := append(orgMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm, boardsAdminPerm, createRolesPerm, editRolesPerm, deleteRolesPerm, addRolesPerm, removeRolesPerm)
 
 	// Because the owner role has all permissions, we only need to call CreatePermissions once
 	err = auth.CreatePermissions(orgOwnerPermissions)
