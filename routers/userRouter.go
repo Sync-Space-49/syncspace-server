@@ -42,10 +42,6 @@ func registerUserRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 func (handler *userHandler) GetUser(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	userId := params["userId"]
-	if userId == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
-		return
-	}
 
 	user, err := handler.controller.GetUserById(userId)
 	if err != nil {
@@ -64,11 +60,6 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 	email := request.FormValue("email")
 	username := request.FormValue("username")
 	password := request.FormValue("password")
-
-	if userId == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenUserId := token.RegisteredClaims.Subject
@@ -140,10 +131,7 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	userId := params["userId"]
-	if userId == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
-		return
-	}
+
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenUserId := token.RegisteredClaims.Subject
 	if tokenUserId != userId {
@@ -163,10 +151,6 @@ func (handler *userHandler) DeleteUser(writer http.ResponseWriter, request *http
 func (handler *userHandler) GetUserOrganizations(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	userId := params["userId"]
-	if userId == "" {
-		http.Error(writer, "No User ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	signedInUserId := token.RegisteredClaims.Subject
