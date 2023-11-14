@@ -69,10 +69,7 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 func (handler *organizationHandler) GetOrganization(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
+
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
@@ -100,10 +97,7 @@ func (handler *organizationHandler) GetOrganization(writer http.ResponseWriter, 
 func (handler *organizationHandler) UpdateOrganization(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
+
 	title := request.FormValue("title")
 	description := request.FormValue("description")
 
@@ -130,10 +124,6 @@ func (handler *organizationHandler) UpdateOrganization(writer http.ResponseWrite
 func (handler *organizationHandler) DeleteOrganization(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -188,10 +178,6 @@ func (handler *organizationHandler) DeleteOrganization(writer http.ResponseWrite
 func (handler *organizationHandler) GetOrganizationMembers(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -215,10 +201,7 @@ func (handler *organizationHandler) GetOrganizationMembers(writer http.ResponseW
 func (handler *organizationHandler) AddMemberToOrganization(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
+
 	newMemberId := request.FormValue("user_id")
 	if newMemberId == "" {
 		http.Error(writer, "No User ID Found", http.StatusBadRequest)
@@ -233,6 +216,7 @@ func (handler *organizationHandler) AddMemberToOrganization(writer http.Response
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to organization with id: %s", newMemberId, organizationId), http.StatusForbidden)
 		return
 	}
+
 	err := handler.controller.AddMember(newMemberId, organizationId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to add user with id %s to org with id %s: %s", newMemberId, organizationId, err.Error()), http.StatusInternalServerError)
@@ -245,15 +229,7 @@ func (handler *organizationHandler) AddMemberToOrganization(writer http.Response
 func (handler *organizationHandler) RemoveMemberFromOrganization(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	memberId := params["memberId"]
-	if memberId == "" {
-		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
