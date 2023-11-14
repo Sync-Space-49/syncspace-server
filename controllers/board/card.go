@@ -56,8 +56,19 @@ func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId
 	if description == "" {
 		description = card.Description
 	}
-	if position == nil {
-		position = &card.Position
+	if position == nil && newStackId != "" {
+		var nextPosition int
+		err := c.db.DB.GetContext(ctx, &nextPosition, `
+			SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Cards where stack_id=$1;
+		`, newStackId)
+		if err != nil {
+			return err
+		}
+		position = &nextPosition
+	} else {
+		if position == nil {
+			position = &card.Position
+		}
 	}
 	if newStackId == "" {
 		newStackId = stackId

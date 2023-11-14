@@ -47,14 +47,11 @@ func (handler *roleHandler) GetOrganizationRoles(writer http.ResponseWriter, req
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	orgRolePrefix := fmt.Sprintf("org%s", organizationId)
 	readOrgPerm := fmt.Sprintf("%s:read", orgRolePrefix)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -78,14 +75,11 @@ func (handler *roleHandler) GetOrganizationPermissions(writer http.ResponseWrite
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	orgRolePrefix := fmt.Sprintf("org%s", organizationId)
 	readOrgPerm := fmt.Sprintf("%s:read", orgRolePrefix)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -118,14 +112,11 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	creatRolesPerm := fmt.Sprintf("%s:create_roles", orgPrefix)
-	canCreateRoles, err := auth.HasPermission(userId, creatRolesPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canCreateRoles := tokenCustomClaims.HasPermission(creatRolesPerm)
 	if !canCreateRoles {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -210,13 +201,10 @@ func (handler *roleHandler) GetRole(writer http.ResponseWriter, request *http.Re
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -247,13 +235,10 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	editRolesPerm := fmt.Sprintf("%s:edit_roles", orgPrefix)
-	canEditRoles, err := auth.HasPermission(userId, editRolesPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canEditRoles := tokenCustomClaims.HasPermission(editRolesPerm)
 	if !canEditRoles {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to edit roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -359,18 +344,15 @@ func (handler *roleHandler) DeleteRole(writer http.ResponseWriter, request *http
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	deleteRolesPerm := fmt.Sprintf("org%s:delete_roles", organizationId)
-	canDeleteRoles, err := auth.HasPermission(userId, deleteRolesPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canDeleteRoles := tokenCustomClaims.HasPermission(deleteRolesPerm)
 	if !canDeleteRoles {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to edit roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
-	err = auth.DeleteRole(roleId)
+	err := auth.DeleteRole(roleId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to delete role %s: %s", roleId, err.Error()), http.StatusInternalServerError)
 		return
@@ -393,13 +375,10 @@ func (handler *roleHandler) GetRolePermissions(writer http.ResponseWriter, reque
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -421,13 +400,10 @@ func (handler *roleHandler) GetMembersWithRole(writer http.ResponseWriter, reque
 	roleId := params["roleId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -463,40 +439,28 @@ func (handler *roleHandler) AddMemberToRole(writer http.ResponseWriter, request 
 		return
 	}
 
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
-	canReadOrg, err := auth.HasPermission(memberId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", memberId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User you're trying to give role to (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
 		return
 	}
-
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
 	addMemberToSpecificRole := fmt.Sprintf("org%s:role%s:add_member", organizationId, roleId)
-	canAddMemberToSpecificRole, err := auth.HasPermission(userId, addMemberToSpecificRole)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canAddMemberToSpecificRole := tokenCustomClaims.HasPermission(addMemberToSpecificRole)
 	if !canAddMemberToSpecificRole {
 		addToRolesPerm := fmt.Sprintf("%s:add_roles", orgPrefix)
-		canAddToRoles, err := auth.HasPermission(userId, addToRolesPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-			return
-		}
+		canAddToRoles := tokenCustomClaims.HasPermission(addToRolesPerm)
 		if !canAddToRoles {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 			return
 		}
 	}
 
-	err = auth.AddUserToRole(memberId, roleId)
+	err := auth.AddUserToRole(memberId, roleId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to add member %s to role %s: %s", memberId, roleId, err.Error()), http.StatusInternalServerError)
 		return
@@ -523,40 +487,29 @@ func (handler *roleHandler) RemoveMemberFromRole(writer http.ResponseWriter, req
 		return
 	}
 
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
-	canReadOrg, err := auth.HasPermission(memberId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", memberId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User you're trying to remove role from (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
 		return
 	}
 
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
 	removeMemberFromSpecificRole := fmt.Sprintf("org%s:role%s:remove_member", organizationId, roleId)
-	canRemoveMemberFromSpecificRole, err := auth.HasPermission(userId, removeMemberFromSpecificRole)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canRemoveMemberFromSpecificRole := tokenCustomClaims.HasPermission(removeMemberFromSpecificRole)
 	if !canRemoveMemberFromSpecificRole {
 		removeFromRolesPerm := fmt.Sprintf("%s:add_roles", orgPrefix)
-		canRemoveFromRoles, err := auth.HasPermission(userId, removeFromRolesPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-			return
-		}
+		canRemoveFromRoles := tokenCustomClaims.HasPermission(removeFromRolesPerm)
 		if !canRemoveFromRoles {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 			return
 		}
 	}
 
-	err = auth.RemoveUserFromRole(memberId, roleId)
+	err := auth.RemoveUserFromRole(memberId, roleId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to remove member %s from role %s: %s", memberId, roleId, err.Error()), http.StatusInternalServerError)
 		return

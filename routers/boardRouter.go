@@ -86,20 +86,17 @@ func (handler *boardHandler) GetAllBoards(writer http.ResponseWriter, request *h
 		return
 	}
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	visibleBoards, err := handler.controller.GetViewableBoardsInOrg(ctx, organizationId, userId)
+	visibleBoards, err := handler.controller.GetViewableBoardsInOrg(ctx, tokenCustomClaims, organizationId, userId)
 	if err != nil {
 		if err.Error() == sql.ErrNoRows.Error() {
 			http.Error(writer, fmt.Sprintf("No organization found with id %s", organizationId), http.StatusNotFound)
@@ -129,6 +126,7 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	// No check if can create board?
 	userId := token.RegisteredClaims.Subject
 	ctx := request.Context()
 	board, err := handler.controller.CreateBoard(ctx, userId, title, isPrivate, orgId)
@@ -153,13 +151,10 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	boardId := params["boardId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -178,11 +173,7 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
@@ -209,24 +200,16 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
-
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	updateBoardPerm := fmt.Sprintf("org%s:board%s:update", organizationId, boardId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
-	canUpdateBoard, err := auth.HasPermission(userId, updateBoardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	updateBoardPerm := fmt.Sprintf("org%s:board%s:update", organizationId, boardId)
+	canUpdateBoard := tokenCustomClaims.HasPermission(updateBoardPerm)
 	if !canUpdateBoard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update board with id: %s", userId, boardId), http.StatusForbidden)
 		return
@@ -248,31 +231,23 @@ func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *ht
 	boardId := params["boardId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
-
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	deleteBoardPerm := fmt.Sprintf("org%s:board%s:delete", organizationId, boardId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read org with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
-	canDeleteBoard, err := auth.HasPermission(userId, deleteBoardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	deleteBoardPerm := fmt.Sprintf("org%s:board%s:delete", organizationId, boardId)
+	canDeleteBoard := tokenCustomClaims.HasPermission(deleteBoardPerm)
 	if !canDeleteBoard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.DeleteBoardById(ctx, boardId)
+	err := handler.controller.DeleteBoardById(ctx, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to delete board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
 		return
@@ -287,13 +262,10 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 	boardId := params["boardId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -312,11 +284,7 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
@@ -347,20 +315,16 @@ func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, reques
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	addUsersPerm := fmt.Sprintf("org%s:board%s:add_members", organizationId, boardId)
-	canAddUsers, err := auth.HasPermission(userId, addUsersPerm)
-
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canAddUsers := tokenCustomClaims.HasPermission(addUsersPerm)
 	if !canAddUsers {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to org %s board with id %s", userId, organizationId, boardId), http.StatusForbidden)
 		return
 	}
 
-	err = handler.controller.AddMemberToBoard(memberId, organizationId, boardId)
+	err := handler.controller.AddMemberToBoard(memberId, organizationId, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get users in board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
 		return
@@ -388,19 +352,16 @@ func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, r
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	removeUsersPerm := fmt.Sprintf("org%s:board%s:remove_members", organizationId, boardId)
-	canRemoveUsers, err := auth.HasPermission(userId, removeUsersPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canRemoveUsers := tokenCustomClaims.HasPermission(removeUsersPerm)
 	if !canRemoveUsers {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to org %s board with id %s", userId, organizationId, boardId), http.StatusForbidden)
 		return
 	}
 	// fmt.Println("hit testing a on member: ", memberId)
-	err = handler.controller.RemoveMemberFromBoard(memberId, organizationId, boardId)
+	err := handler.controller.RemoveMemberFromBoard(memberId, organizationId, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get users in board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
 		return
@@ -415,24 +376,17 @@ func (handler *boardHandler) GetPanels(writer http.ResponseWriter, request *http
 	boardId := params["boardId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s  does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
 	readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-	canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 	if !canReadBoard {
 		http.Error(writer, fmt.Sprintf("User with id %s  does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 		return
@@ -460,29 +414,22 @@ func (handler *boardHandler) CreatePanel(writer http.ResponseWriter, request *ht
 		return
 	}
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	createPanelPerm := fmt.Sprintf("org%s:board%s:create_panel", organizationId, boardId)
-	canCreatePanel, err := auth.HasPermission(userId, createPanelPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canCreatePanel := tokenCustomClaims.HasPermission(createPanelPerm)
 	if !canCreatePanel {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create panel on board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
-	err = handler.controller.CreatePanel(request.Context(), title, boardId)
+	err := handler.controller.CreatePanel(request.Context(), title, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create panel: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -498,24 +445,17 @@ func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.
 	panelId := params["panelId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
 	readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-	canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 	if !canReadBoard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 		return
@@ -555,20 +495,17 @@ func (handler *boardHandler) UpdatePanel(writer http.ResponseWriter, request *ht
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	updatePanelPerm := fmt.Sprintf("org%s:board%s:update_panel", organizationId, boardId)
-	canUpdatePanel, err := auth.HasPermission(userId, updatePanelPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canUpdatePanel := tokenCustomClaims.HasPermission(updatePanelPerm)
 	if !canUpdatePanel {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update panel %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.UpdatePanelById(ctx, boardId, panelId, title, position)
+	err := handler.controller.UpdatePanelById(ctx, boardId, panelId, title, position)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update panel with id %s: %s", panelId, err.Error()), http.StatusInternalServerError)
 		return
@@ -584,20 +521,17 @@ func (handler *boardHandler) DeletePanel(writer http.ResponseWriter, request *ht
 	panelId := params["panelId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	deletePanelPerm := fmt.Sprintf("org%s:board%s:delete_panel", organizationId, boardId)
-	canDeletePanel, err := auth.HasPermission(userId, deletePanelPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canDeletePanel := tokenCustomClaims.HasPermission(deletePanelPerm)
 	if !canDeletePanel {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete panel %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.DeletePanelById(ctx, boardId, panelId)
+	err := handler.controller.DeletePanelById(ctx, boardId, panelId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to delete panel with id %s: %s", panelId, err.Error()), http.StatusInternalServerError)
 		return
@@ -613,13 +547,10 @@ func (handler *boardHandler) GetCompletePanel(writer http.ResponseWriter, reques
 	panelId := params["panelId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -637,11 +568,7 @@ func (handler *boardHandler) GetCompletePanel(writer http.ResponseWriter, reques
 	}
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
@@ -667,13 +594,10 @@ func (handler *boardHandler) GetStacks(writer http.ResponseWriter, request *http
 	panelId := params["panelId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -702,29 +626,22 @@ func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *ht
 		return
 	}
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	createStackPerm := fmt.Sprintf("org%s:board%s:create_stack", organizationId, boardId)
-	canCreateStack, err := auth.HasPermission(userId, createStackPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canCreateStack := tokenCustomClaims.HasPermission(createStackPerm)
 	if !canCreateStack {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create stack on board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
-	err = handler.controller.CreateStack(request.Context(), title, panelId)
+	err := handler.controller.CreateStack(request.Context(), title, panelId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create stack: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -740,13 +657,10 @@ func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.
 	stackId := params["stackId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -765,11 +679,7 @@ func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.
 
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
@@ -811,20 +721,17 @@ func (handler *boardHandler) UpdateStack(writer http.ResponseWriter, request *ht
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	updateStackPerm := fmt.Sprintf("org%s:board%s:update_stack", organizationId, boardId)
-	canUpdateStack, err := auth.HasPermission(userId, updateStackPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canUpdateStack := tokenCustomClaims.HasPermission(updateStackPerm)
 	if !canUpdateStack {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update stack %s in board with id: %s", userId, stackId, boardId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.UpdateStackById(ctx, panelId, stackId, title, position)
+	err := handler.controller.UpdateStackById(ctx, panelId, stackId, title, position)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update stack with id %s: %s", stackId, err.Error()), http.StatusInternalServerError)
 		return
@@ -841,20 +748,17 @@ func (handler *boardHandler) DeleteStack(writer http.ResponseWriter, request *ht
 	stackId := params["stackId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	deleteStackPerm := fmt.Sprintf("org%s:board%s:delete_stack", organizationId, boardId)
-	canDeleteStack, err := auth.HasPermission(userId, deleteStackPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canDeleteStack := tokenCustomClaims.HasPermission(deleteStackPerm)
 	if !canDeleteStack {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete stack %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.DeleteStackById(ctx, panelId, stackId)
+	err := handler.controller.DeleteStackById(ctx, panelId, stackId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to delete stack with id %s: %s", stackId, err.Error()), http.StatusInternalServerError)
 		return
@@ -870,13 +774,10 @@ func (handler *boardHandler) GetCompleteStack(writer http.ResponseWriter, reques
 	stackId := params["stackId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -895,11 +796,7 @@ func (handler *boardHandler) GetCompleteStack(writer http.ResponseWriter, reques
 
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
@@ -925,13 +822,10 @@ func (handler *boardHandler) GetCards(writer http.ResponseWriter, request *http.
 	stackId := params["stackId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -961,29 +855,22 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 	}
 	description := request.FormValue("description")
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	createCardPerm := fmt.Sprintf("org%s:board%s:create_card", organizationId, boardId)
-	canCreateCard, err := auth.HasPermission(userId, createCardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canCreateCard := tokenCustomClaims.HasPermission(createCardPerm)
 	if !canCreateCard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create a card on board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
-	err = handler.controller.CreateCard(request.Context(), title, description, stackId)
+	err := handler.controller.CreateCard(request.Context(), title, description, stackId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -999,13 +886,10 @@ func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.R
 	cardId := params["cardId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
@@ -1024,11 +908,7 @@ func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.R
 
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-		canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
@@ -1072,20 +952,17 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 	newStackId := request.FormValue("stack_id")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	updateCardPerm := fmt.Sprintf("org%s:board%s:update_card", organizationId, boardId)
-	canUpdateCard, err := auth.HasPermission(userId, updateCardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canUpdateCard := tokenCustomClaims.HasPermission(updateCardPerm)
 	if !canUpdateCard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update card %s in board with id: %s", userId, cardId, boardId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.UpdateCardById(ctx, boardId, stackId, cardId, newStackId, title, description, position)
+	err := handler.controller.UpdateCardById(ctx, boardId, stackId, cardId, newStackId, title, description, position)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
 		return
@@ -1102,20 +979,17 @@ func (handler *boardHandler) DeleteCard(writer http.ResponseWriter, request *htt
 	cardId := params["cardId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	deleteCardPerm := fmt.Sprintf("org%s:board%s:delete_card", organizationId, boardId)
-	canDeleteCard, err := auth.HasPermission(userId, deleteCardPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canDeleteCard := tokenCustomClaims.HasPermission(deleteCardPerm)
 	if !canDeleteCard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.DeleteCardById(ctx, stackId, cardId)
+	err := handler.controller.DeleteCardById(ctx, stackId, cardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to delete card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
 		return

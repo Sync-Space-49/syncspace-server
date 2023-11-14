@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, orgId string, userId string) (*[]Board, error) {
+func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, tokenCustomClaims *auth.CustomClaims, orgId string, userId string) (*[]Board, error) {
 	orgBoards := make([]Board, 0)
 	err := c.db.DB.SelectContext(ctx, &orgBoards, `
 		SELECT * FROM Boards WHERE organization_id=$1;
@@ -23,10 +23,7 @@ func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, orgId string, u
 	for _, board := range orgBoards {
 		if board.IsPrivate {
 			readBoardPerm := fmt.Sprintf("org%s:board%s:read", orgId, board.Id)
-			canReadBoard, err := auth.HasPermission(userId, readBoardPerm)
-			if err != nil {
-				return nil, err
-			}
+			canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 			if !canReadBoard {
 				continue
 			}

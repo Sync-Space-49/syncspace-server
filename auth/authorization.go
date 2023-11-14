@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -15,15 +14,12 @@ func (c CustomClaims) HasScope(expectedScope string) bool {
 	return false
 }
 
-func HasPermission(userId string, permissionName string) (bool, error) {
-	userPermissions, err := GetUserPermissions(userId)
-	if err != nil {
-		return false, fmt.Errorf("failed to get user roles: %v", err)
-	}
-	for _, permission := range *userPermissions {
-		if permission.Name == permissionName {
-			return true, nil
+func (c CustomClaims) HasPermission(permissionName string) bool {
+	userPermissions := c.Permissions
+	for _, permission := range userPermissions {
+		if permission == permissionName {
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
