@@ -31,7 +31,6 @@ func registerOrganizationRoutes(parentRouter *mux.Router, cfg *config.Config, db
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganization))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateOrganization))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteOrganization))).Methods("DELETE")
-	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/boards", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllBoards))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetOrganizationMembers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddMemberToOrganization))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{organizationId}/members/{memberId}", organizationsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveMemberFromOrganization))).Methods("DELETE")
@@ -75,13 +74,9 @@ func (handler *organizationHandler) GetOrganization(writer http.ResponseWriter, 
 		return
 	}
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
 		return
@@ -113,20 +108,16 @@ func (handler *organizationHandler) UpdateOrganization(writer http.ResponseWrite
 	description := request.FormValue("description")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	updateOrgPerm := fmt.Sprintf("org%s:update", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, updateOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if !canReadOrg {
+	canUpdateOrg := tokenCustomClaims.HasPermission(updateOrgPerm)
+	if !canUpdateOrg {
 		http.Error(writer, fmt.Sprintf("User does not have permission to update organization with id: %s", organizationId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.UpdateOrganizationById(ctx, organizationId, title, description)
+	err := handler.controller.UpdateOrganizationById(ctx, organizationId, title, description)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update organization with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
 		return
@@ -145,20 +136,16 @@ func (handler *organizationHandler) DeleteOrganization(writer http.ResponseWrite
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	deleteOrgPerm := fmt.Sprintf("org%s:delete", organizationId)
-	canDeleteOrg, err := auth.HasPermission(userId, deleteOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canDeleteOrg := tokenCustomClaims.HasPermission(deleteOrgPerm)
 	if !canDeleteOrg {
 		http.Error(writer, fmt.Sprintf("User does not have permission to delete organization with id: %s", organizationId), http.StatusForbidden)
 		return
 	}
 
 	ctx := request.Context()
-	err = handler.controller.DeleteOrganizationById(ctx, organizationId)
+	err := handler.controller.DeleteOrganizationById(ctx, organizationId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to delete organization with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
 		return
@@ -207,13 +194,9 @@ func (handler *organizationHandler) GetOrganizationMembers(writer http.ResponseW
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
 		return
@@ -236,27 +219,23 @@ func (handler *organizationHandler) AddMemberToOrganization(writer http.Response
 		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
 		return
 	}
-	userId := request.FormValue("user_id")
-	if userId == "" {
+	newMemberId := request.FormValue("user_id")
+	if newMemberId == "" {
 		http.Error(writer, "No User ID Found", http.StatusBadRequest)
 		return
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	signedInUserId := token.RegisteredClaims.Subject
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	addUsersPerm := fmt.Sprintf("org%s:add_members", organizationId)
-	canAddUsers, err := auth.HasPermission(signedInUserId, addUsersPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canAddUsers := tokenCustomClaims.HasPermission(addUsersPerm)
 	if !canAddUsers {
-		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to organization with id: %s", userId, organizationId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to organization with id: %s", newMemberId, organizationId), http.StatusForbidden)
 		return
 	}
-	err = handler.controller.AddMember(userId, organizationId)
+	err := handler.controller.AddMember(newMemberId, organizationId)
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to add user with id %s to org with id %s: %s", userId, organizationId, err.Error()), http.StatusInternalServerError)
+		http.Error(writer, fmt.Sprintf("Failed to add user with id %s to org with id %s: %s", newMemberId, organizationId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
@@ -277,59 +256,20 @@ func (handler *organizationHandler) RemoveMemberFromOrganization(writer http.Res
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	removeUsersPerm := fmt.Sprintf("org%s:remove_members", organizationId)
-	canRemoveUsers, err := auth.HasPermission(userId, removeUsersPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user with id %s permissions: %s", userId, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	canRemoveUsers := tokenCustomClaims.HasPermission(removeUsersPerm)
 	if !canRemoveUsers {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to remove users from organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
-	err = handler.controller.RemoveMember(memberId, organizationId)
+	err := handler.controller.RemoveMember(memberId, organizationId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to remove user with id %s from org with id %s: %s", memberId, organizationId, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
-}
-
-func (handler *organizationHandler) GetAllBoards(writer http.ResponseWriter, request *http.Request) {
-	params := mux.Vars(request)
-	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	userId := token.RegisteredClaims.Subject
-	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
-	canReadOrg, err := auth.HasPermission(userId, readOrgPerm)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get user permissions: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if !canReadOrg {
-		http.Error(writer, fmt.Sprintf("User does not have permission to read organization with id: %s", organizationId), http.StatusForbidden)
-		return
-	}
-
-	ctx := request.Context()
-	visibleBoards, err := handler.controller.GetViewableBoardsInOrg(ctx, organizationId, userId)
-	if err != nil {
-		if err.Error() == sql.ErrNoRows.Error() {
-			http.Error(writer, fmt.Sprintf("No organization found with id %s", organizationId), http.StatusNotFound)
-		} else {
-			http.Error(writer, fmt.Sprintf("Failed to get organization: %s", err.Error()), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(visibleBoards)
 }

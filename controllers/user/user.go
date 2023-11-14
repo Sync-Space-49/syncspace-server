@@ -10,23 +10,9 @@ import (
 	"strings"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
-	"github.com/Sync-Space-49/syncspace-server/config"
 	"github.com/Sync-Space-49/syncspace-server/controllers/organization"
-	"github.com/Sync-Space-49/syncspace-server/db"
 	"github.com/jmoiron/sqlx"
 )
-
-type Controller struct {
-	cfg *config.Config
-	db  *db.DB
-}
-
-func NewController(cfg *config.Config, db *db.DB) *Controller {
-	return &Controller{
-		cfg: cfg,
-		db:  db,
-	}
-}
 
 func (c *Controller) GetUserById(userId string) (*User, error) {
 	managementToken, err := auth.GetManagementToken()

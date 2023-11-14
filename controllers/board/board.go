@@ -7,21 +7,30 @@ import (
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 
-	"github.com/Sync-Space-49/syncspace-server/config"
-	"github.com/Sync-Space-49/syncspace-server/db"
 	"github.com/google/uuid"
 )
 
-type Controller struct {
-	cfg *config.Config
-	db  *db.DB
-}
-
-func NewController(cfg *config.Config, db *db.DB) *Controller {
-	return &Controller{
-		cfg: cfg,
-		db:  db,
+func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, tokenCustomClaims *auth.CustomClaims, orgId string, userId string) (*[]Board, error) {
+	orgBoards := make([]Board, 0)
+	err := c.db.DB.SelectContext(ctx, &orgBoards, `
+		SELECT * FROM Boards WHERE organization_id=$1;
+	`, orgId)
+	if err != nil {
+		return nil, err
 	}
+
+	var viewableBoards []Board
+	for _, board := range orgBoards {
+		if board.IsPrivate {
+			readBoardPerm := fmt.Sprintf("org%s:board%s:read", orgId, board.Id)
+			canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
+			if !canReadBoard {
+				continue
+			}
+		}
+		viewableBoards = append(viewableBoards, board)
+	}
+	return &viewableBoards, nil
 }
 
 func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, error) {
@@ -35,9 +44,47 @@ func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, 
 	return &board, nil
 }
 
+func (c *Controller) GetCompleteBoardById(ctx context.Context, boardId string) (*CompleteBoard, error) {
+	board, err := c.GetBoardById(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+	completeBoard := CopyToCompleteBoard(*board)
+	panels, err := c.GetPanelsByBoardId(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+	if len(*panels) > 0 {
+		for _, panel := range *panels {
+			completePanel := CopyToCompletePanel(panel)
+			completePanel.Stacks = make([]CompleteStack, 0)
+			stacks, err := c.GetStacksByPanelId(ctx, panel.Id.String())
+			if err != nil {
+				return nil, err
+			}
+			if len(*stacks) > 0 {
+				for _, stack := range *stacks {
+					completeStack := CopyToCompleteStack(stack)
+					cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
+					if err != nil {
+						return nil, err
+					}
+					completeStack.Cards = *cards
+					completePanel.Stacks = append(completePanel.Stacks, completeStack)
+				}
+			} else {
+				completePanel.Stacks = make([]CompleteStack, 0)
+			}
+			completeBoard.Panels = append(completeBoard.Panels, completePanel)
+		}
+	} else {
+		completeBoard.Panels = make([]CompletePanel, 0)
+	}
+	return &completeBoard, nil
+}
+
 func (c *Controller) CreateBoard(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*Board, error) {
-	var query string
-	query = `INSERT INTO Boards (id, title, is_private, organization_id, owner_id) VALUES ($1, $2, $3, $4, $5);`
+	query := `INSERT INTO Boards (id, title, is_private, organization_id, owner_id) VALUES ($1, $2, $3, $4, $5);`
 	boardId := uuid.New().String()
 	_, err := c.db.DB.ExecContext(ctx, query, boardId, name, isPrivate, orgId, userId)
 	if err != nil {
@@ -76,6 +123,42 @@ func (c *Controller) InitializeBoard(ownerId string, boardId string, orgId strin
 		Name:        fmt.Sprintf("org%s:board%s:update", orgId, boardId),
 		Description: fmt.Sprintf("Allows you to update info about the board with id %s", boardId),
 	}
+	createPanelPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:create_panel", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to create a panel on the board with id %s", boardId),
+	}
+	deletePanelPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:delete_panel", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to delete a panel on the board with id %s", boardId),
+	}
+	updatePanelPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:update_panel", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to update a panel on the board with id %s", boardId),
+	}
+	createStackPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:create_stack", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to create a stack on the board with id %s", boardId),
+	}
+	updateStackPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:update_stack", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to update a stack on the board with id %s", boardId),
+	}
+	deleteStackPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:delete_stack", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to delete a stack on the board with id %s", boardId),
+	}
+	createCardPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:create_card", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to create a card on the board with id %s", boardId),
+	}
+	updateCardPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:update_card", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to update a card on the board with id %s", boardId),
+	}
+	deleteCardPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:board%s:delete_card", orgId, boardId),
+		Description: fmt.Sprintf("Allows you to delete a card on the board with id %s", boardId),
+	}
 	addMembersPerm := auth.Permission{
 		Name:        fmt.Sprintf("org%s:board%s:add_members", orgId, boardId),
 		Description: fmt.Sprintf("Allows you to add members to the board with id %s", boardId),
@@ -86,9 +169,9 @@ func (c *Controller) InitializeBoard(ownerId string, boardId string, orgId strin
 	}
 
 	boardMemberPermissions := []auth.Permission{
-		readPerm,
+		readPerm, createCardPerm, updateCardPerm, deleteCardPerm,
 	}
-	boardOwnerPermissions := append(boardMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm)
+	boardOwnerPermissions := append(boardMemberPermissions, deletePerm, updatePerm, createPanelPerm, deletePanelPerm, updatePanelPerm, createStackPerm, updateStackPerm, deleteStackPerm, addMembersPerm, removeMembersPerm)
 
 	// Because the owner role has all permissions, we only need to call CreatePermissions once
 	err = auth.CreatePermissions(boardOwnerPermissions)

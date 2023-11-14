@@ -1,7 +1,8 @@
 package auth
 
 type CustomClaims struct {
-	Scope string `json:"scope"`
+	Permissions []string `json:"permissions"`
+	Scope       string   `json:"scope"`
 }
 
 type Role struct {
