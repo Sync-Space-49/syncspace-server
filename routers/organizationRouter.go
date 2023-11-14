@@ -260,7 +260,7 @@ func (handler *organizationHandler) RemoveMemberFromOrganization(writer http.Res
 	userId := token.RegisteredClaims.Subject
 	removeUsersPerm := fmt.Sprintf("org%s:remove_members", organizationId)
 	canRemoveUsers := tokenCustomClaims.HasPermission(removeUsersPerm)
-	if !canRemoveUsers {
+	if !canRemoveUsers && userId != memberId {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to remove users from organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
