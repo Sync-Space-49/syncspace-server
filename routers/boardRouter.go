@@ -356,7 +356,7 @@ func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, r
 	userId := token.RegisteredClaims.Subject
 	removeUsersPerm := fmt.Sprintf("org%s:board%s:remove_members", organizationId, boardId)
 	canRemoveUsers := tokenCustomClaims.HasPermission(removeUsersPerm)
-	if !canRemoveUsers {
+	if !canRemoveUsers && userId != memberId {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to org %s board with id %s", userId, organizationId, boardId), http.StatusForbidden)
 		return
 	}

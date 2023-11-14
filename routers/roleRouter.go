@@ -493,7 +493,7 @@ func (handler *roleHandler) RemoveMemberFromRole(writer http.ResponseWriter, req
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
 	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
-	if !canReadOrg {
+	if !canReadOrg && userId != memberId {
 		http.Error(writer, fmt.Sprintf("User you're trying to remove role from (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
 		return
 	}
