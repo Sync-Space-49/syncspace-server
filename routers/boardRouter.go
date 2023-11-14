@@ -126,8 +126,17 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	// No check if can create board?
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", orgId)
+	createBoardPerm := fmt.Sprintf("%s:create_board", orgPrefix)
+	canCreateBoard := tokenCustomClaims.HasPermission(createBoardPerm)
+	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+	isBoardAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
+	if !canCreateBoard && !isBoardAdmin {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create board in org with id: %s", token.RegisteredClaims.Subject, orgId), http.StatusForbidden)
+		return
+	}
 	ctx := request.Context()
 	board, err := handler.controller.CreateBoard(ctx, userId, title, isPrivate, orgId)
 	if err != nil {
