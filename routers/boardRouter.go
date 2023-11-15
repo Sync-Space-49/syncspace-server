@@ -130,10 +130,9 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", orgId)
 	createBoardsPerm := fmt.Sprintf("%s:create_board", orgPrefix)
-	canCreateBoards := tokenCustomClaims.HasPermission(createBoardsPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canCreateBoards && !isBoardsAdmin {
+	canCreateBoards := tokenCustomClaims.HasAnyPermissions(createBoardsPerm, boardsAdminPerm)
+	if !canCreateBoards {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create board in org with id: %s", token.RegisteredClaims.Subject, orgId), http.StatusForbidden)
 		return
 	}
@@ -181,8 +180,10 @@ func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.
 	}
 
 	if board.IsPrivate {
-		readBoardPerm := fmt.Sprintf("org%s:board%s:read", organizationId, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
+		orgPrefix := fmt.Sprintf("org%s", organizationId)
+		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
+		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
 		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
@@ -219,10 +220,9 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 		return
 	}
 	updateBoardPerm := fmt.Sprintf("%s:board%s:update", orgPrefix, boardId)
-	canUpdateBoard := tokenCustomClaims.HasPermission(updateBoardPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canUpdateBoard && !isBoardsAdmin {
+	canUpdateBoard := tokenCustomClaims.HasAnyPermissions(updateBoardPerm, boardsAdminPerm)
+	if !canUpdateBoard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
@@ -253,10 +253,9 @@ func (handler *boardHandler) DeleteBoard(writer http.ResponseWriter, request *ht
 		return
 	}
 	deleteBoardPerm := fmt.Sprintf("%s:board%s:delete", orgPrefix, boardId)
-	canDeleteBoard := tokenCustomClaims.HasPermission(deleteBoardPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canDeleteBoard && !isBoardsAdmin {
+	canDeleteBoard := tokenCustomClaims.HasAnyPermissions(deleteBoardPerm, boardsAdminPerm)
+	if !canDeleteBoard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
@@ -279,7 +278,8 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
-	readOrgPerm := fmt.Sprintf("org%s:read", organizationId)
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
 	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
 	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
@@ -298,12 +298,10 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 	}
 
 	if board.IsPrivate {
-		orgPrefix := fmt.Sprintf("org%s", organizationId)
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -337,10 +335,9 @@ func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, reques
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	addUsersPerm := fmt.Sprintf("%s:board%s:add_members", orgPrefix, boardId)
-	canAddUsers := tokenCustomClaims.HasPermission(addUsersPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canAddUsers && !isBoardsAdmin {
+	canAddUsers := tokenCustomClaims.HasAnyPermissions(addUsersPerm, boardsAdminPerm)
+	if !canAddUsers {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to org %s board with id %s", userId, organizationId, boardId), http.StatusForbidden)
 		return
 	}
@@ -377,10 +374,9 @@ func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, r
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	removeUsersPerm := fmt.Sprintf("%s:board%s:remove_members", orgPrefix, boardId)
-	canRemoveUsers := tokenCustomClaims.HasPermission(removeUsersPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canRemoveUsers && !isBoardsAdmin && userId != memberId {
+	canRemoveUsers := tokenCustomClaims.HasAnyPermissions(removeUsersPerm, boardsAdminPerm)
+	if !canRemoveUsers && userId != memberId {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to org %s board with id %s", userId, organizationId, boardId), http.StatusForbidden)
 		return
 	}
@@ -421,10 +417,9 @@ func (handler *boardHandler) GetPanels(writer http.ResponseWriter, request *http
 	}
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -461,10 +456,9 @@ func (handler *boardHandler) CreatePanel(writer http.ResponseWriter, request *ht
 		return
 	}
 	createPanelPerm := fmt.Sprintf("%s:board%s:create_panel", orgPrefix, boardId)
-	canCreatePanel := tokenCustomClaims.HasPermission(createPanelPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canCreatePanel && !isBoardsAdmin {
+	canCreatePanel := tokenCustomClaims.HasAnyPermissions(createPanelPerm, boardsAdminPerm)
+	if !canCreatePanel {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create panel on board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
@@ -507,10 +501,9 @@ func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.
 	}
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -553,10 +546,9 @@ func (handler *boardHandler) UpdatePanel(writer http.ResponseWriter, request *ht
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	updatePanelPerm := fmt.Sprintf("%s:board%s:update_panel", orgPrefix, boardId)
-	canUpdatePanel := tokenCustomClaims.HasPermission(updatePanelPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canUpdatePanel && !isBoardsAdmin {
+	canUpdatePanel := tokenCustomClaims.HasAnyPermissions(updatePanelPerm, boardsAdminPerm)
+	if !canUpdatePanel {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update panel %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
 		return
 	}
@@ -582,10 +574,9 @@ func (handler *boardHandler) DeletePanel(writer http.ResponseWriter, request *ht
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	deletePanelPerm := fmt.Sprintf("%s:board%s:delete_panel", orgPrefix, boardId)
-	canDeletePanel := tokenCustomClaims.HasPermission(deletePanelPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canDeletePanel && !isBoardsAdmin {
+	canDeletePanel := tokenCustomClaims.HasAnyPermissions(deletePanelPerm, boardsAdminPerm)
+	if !canDeletePanel {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete panel %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
 		return
 	}
@@ -629,10 +620,9 @@ func (handler *boardHandler) GetCompletePanel(writer http.ResponseWriter, reques
 	}
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -680,10 +670,9 @@ func (handler *boardHandler) GetStacks(writer http.ResponseWriter, request *http
 	}
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -716,14 +705,13 @@ func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *ht
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
 	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
-	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canReadOrg && !isBoardsAdmin {
+	if !canReadOrg {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 	createStackPerm := fmt.Sprintf("org%s:board%s:create_stack", organizationId, boardId)
-	canCreateStack := tokenCustomClaims.HasPermission(createStackPerm)
+	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+	canCreateStack := tokenCustomClaims.HasAnyPermissions(createStackPerm, boardsAdminPerm)
 	if !canCreateStack {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create stack on board with id: %s", userId, boardId), http.StatusForbidden)
 		return
@@ -768,10 +756,9 @@ func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.
 	if board.IsPrivate {
 		orgPrefix := fmt.Sprintf("org%s", organizationId)
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -816,10 +803,9 @@ func (handler *boardHandler) UpdateStack(writer http.ResponseWriter, request *ht
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	updateStackPerm := fmt.Sprintf("%s:board%s:update_stack", userId, boardId)
-	canUpdateStack := tokenCustomClaims.HasPermission(updateStackPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canUpdateStack && !isBoardsAdmin {
+	canUpdateStack := tokenCustomClaims.HasAnyPermissions(updateStackPerm, boardsAdminPerm)
+	if !canUpdateStack {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update stack %s in board with id: %s", userId, stackId, boardId), http.StatusForbidden)
 		return
 	}
@@ -846,10 +832,9 @@ func (handler *boardHandler) DeleteStack(writer http.ResponseWriter, request *ht
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	deleteStackPerm := fmt.Sprintf("%s:board%s:delete_stack", orgPrefix, boardId)
-	canDeleteStack := tokenCustomClaims.HasPermission(deleteStackPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canDeleteStack && !isBoardsAdmin {
+	canDeleteStack := tokenCustomClaims.HasAnyPermissions(deleteStackPerm, boardsAdminPerm)
+	if !canDeleteStack {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete stack %s on board with id: %s", userId, panelId, boardId), http.StatusForbidden)
 		return
 	}
@@ -894,9 +879,8 @@ func (handler *boardHandler) GetCompleteStack(writer http.ResponseWriter, reques
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -944,10 +928,9 @@ func (handler *boardHandler) GetCards(writer http.ResponseWriter, request *http.
 	}
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -986,10 +969,9 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 	createCardPerm := fmt.Sprintf("%s:board%s:create_card", orgPrefix, boardId)
-	canCreateCard := tokenCustomClaims.HasPermission(createCardPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canCreateCard && !isBoardsAdmin {
+	canCreateCard := tokenCustomClaims.HasAnyPermissions(createCardPerm, boardsAdminPerm)
+	if !canCreateCard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create a card on board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
@@ -1033,10 +1015,9 @@ func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.R
 
 	if board.IsPrivate {
 		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-		canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
 		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-		isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-		if !canReadBoard && !isBoardsAdmin {
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
 			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
 			return
 		}
@@ -1083,10 +1064,9 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	updateCardPerm := fmt.Sprintf("%s:board%s:update_card", orgPrefix, boardId)
-	canUpdateCard := tokenCustomClaims.HasPermission(updateCardPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canUpdateCard && !isBoardsAdmin {
+	canUpdateCard := tokenCustomClaims.HasAnyPermissions(updateCardPerm, boardsAdminPerm)
+	if !canUpdateCard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update card %s in board with id: %s", userId, cardId, boardId), http.StatusForbidden)
 		return
 	}
@@ -1113,10 +1093,9 @@ func (handler *boardHandler) DeleteCard(writer http.ResponseWriter, request *htt
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", organizationId)
 	deleteCardPerm := fmt.Sprintf("%s:board%s:delete_card", orgPrefix, boardId)
-	canDeleteCard := tokenCustomClaims.HasPermission(deleteCardPerm)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	isBoardsAdmin := tokenCustomClaims.HasPermission(boardsAdminPerm)
-	if !canDeleteCard && !isBoardsAdmin {
+	canDeleteCard := tokenCustomClaims.HasAnyPermissions(deleteCardPerm, boardsAdminPerm)
+	if !canDeleteCard {
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to delete card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
 		return
 	}
