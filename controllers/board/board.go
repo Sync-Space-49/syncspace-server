@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
+	"github.com/Sync-Space-49/syncspace-server/controllers/user"
 
 	"github.com/google/uuid"
 )
@@ -260,6 +261,20 @@ func (c *Controller) DeleteBoardById(ctx context.Context, boardId string) error 
 		return err
 	}
 	return nil
+}
+
+func (c *Controller) GetMembersByBoardId(boardId string) (*[]user.User, error) {
+	boardMemberRoleName := fmt.Sprintf("board%s:member", boardId)
+	roles, err := auth.GetRoles(&boardMemberRoleName)
+	if err != nil {
+		return nil, err
+	}
+	boardMemberRole := (*roles)[0]
+	members, err := user.GetUsersWithRole(boardMemberRole.Id)
+	if err != nil {
+		return nil, err
+	}
+	return members, nil
 }
 
 func (c *Controller) AddMemberToBoard(userId string, orgId string, boardId string) error {
