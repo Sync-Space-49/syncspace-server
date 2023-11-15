@@ -81,10 +81,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 func (handler *boardHandler) GetAllBoards(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
+
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
@@ -115,13 +112,13 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 	params := mux.Vars(request)
 	orgId := params["organizationId"]
 	title := request.FormValue("title")
+	if title == "" {
+		http.Error(writer, "No Title Found", http.StatusBadRequest)
+		return
+	}
 	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
-		return
-	}
-	if title == "" {
-		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
 	}
 
@@ -202,7 +199,6 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 
 	title := request.FormValue("title")
 	ownerId := request.FormValue("ownerId")
-
 	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
@@ -315,15 +311,8 @@ func (handler *boardHandler) GetCompleteBoard(writer http.ResponseWriter, reques
 func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	boardId := params["boardId"]
-	if boardId == "" {
-		http.Error(writer, "No Board ID Found", http.StatusBadRequest)
-		return
-	}
+
 	memberId := request.FormValue("user_id")
 	if memberId == "" {
 		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
@@ -354,20 +343,8 @@ func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, reques
 func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	boardId := params["boardId"]
-	if boardId == "" {
-		http.Error(writer, "No Board ID Found", http.StatusBadRequest)
-		return
-	}
 	memberId := params["memberId"]
-	if memberId == "" {
-		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -445,6 +422,7 @@ func (handler *boardHandler) CreatePanel(writer http.ResponseWriter, request *ht
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
 	}
+
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
@@ -699,6 +677,7 @@ func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *ht
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
 	}
+
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
@@ -958,6 +937,7 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 	description := request.FormValue("description")
+
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject

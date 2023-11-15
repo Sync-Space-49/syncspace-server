@@ -41,10 +41,6 @@ func registerRoleRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 func (handler *roleHandler) GetOrganizationRoles(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -56,6 +52,7 @@ func (handler *roleHandler) GetOrganizationRoles(writer http.ResponseWriter, req
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
+
 	roles, err := auth.GetRoles(&orgRolePrefix)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get roles for organization %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
@@ -69,10 +66,6 @@ func (handler *roleHandler) GetOrganizationRoles(writer http.ResponseWriter, req
 func (handler *roleHandler) GetOrganizationPermissions(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -84,6 +77,7 @@ func (handler *roleHandler) GetOrganizationPermissions(writer http.ResponseWrite
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
+
 	roles, err := auth.GetRoles(&orgRolePrefix)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get roles for organization %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
@@ -106,21 +100,6 @@ func (handler *roleHandler) GetOrganizationPermissions(writer http.ResponseWrite
 func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
-
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
-	userId := token.RegisteredClaims.Subject
-	orgPrefix := fmt.Sprintf("org%s", organizationId)
-	creatRolesPerm := fmt.Sprintf("%s:create_roles", orgPrefix)
-	canCreateRoles := tokenCustomClaims.HasPermission(creatRolesPerm)
-	if !canCreateRoles {
-		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
-		return
-	}
 
 	roleName := request.FormValue("name")
 	if roleName == "" {
@@ -135,6 +114,17 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 	permissionNames := request.Form["permission_names"]
 	if len(permissionNames) == 0 {
 		http.Error(writer, "No Permission Names Found", http.StatusBadRequest)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	creatRolesPerm := fmt.Sprintf("%s:create_roles", orgPrefix)
+	canCreateRoles := tokenCustomClaims.HasPermission(creatRolesPerm)
+	if !canCreateRoles {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create roles to organization with id: %s", userId, organizationId), http.StatusForbidden)
 		return
 	}
 
@@ -190,15 +180,7 @@ func (handler *roleHandler) CreateRole(writer http.ResponseWriter, request *http
 func (handler *roleHandler) GetRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	roleId := params["roleId"]
-	if roleId == "" {
-		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -223,15 +205,7 @@ func (handler *roleHandler) GetRole(writer http.ResponseWriter, request *http.Re
 func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	roleId := params["roleId"]
-	if roleId == "" {
-		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	userId := token.RegisteredClaims.Subject
@@ -333,15 +307,7 @@ func (handler *roleHandler) UpdateRole(writer http.ResponseWriter, request *http
 func (handler *roleHandler) DeleteRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	roleId := params["roleId"]
-	if roleId == "" {
-		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -364,15 +330,7 @@ func (handler *roleHandler) DeleteRole(writer http.ResponseWriter, request *http
 func (handler *roleHandler) GetRolePermissions(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	roleId := params["roleId"]
-	if roleId == "" {
-		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -423,15 +381,7 @@ func (handler *roleHandler) GetMembersWithRole(writer http.ResponseWriter, reque
 func (handler *roleHandler) AddMemberToRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	roleId := params["roleId"]
-	if roleId == "" {
-		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
-		return
-	}
 
 	memberId := request.FormValue("member_id")
 	if memberId == "" {
@@ -449,6 +399,7 @@ func (handler *roleHandler) AddMemberToRole(writer http.ResponseWriter, request 
 		http.Error(writer, fmt.Sprintf("User you're trying to give role to (%s) does not have permission to read organization with id: %s", memberId, organizationId), http.StatusForbidden)
 		return
 	}
+
 	addMemberToSpecificRole := fmt.Sprintf("org%s:role%s:add_member", organizationId, roleId)
 	canAddMemberToSpecificRole := tokenCustomClaims.HasPermission(addMemberToSpecificRole)
 	if !canAddMemberToSpecificRole {
@@ -472,20 +423,8 @@ func (handler *roleHandler) AddMemberToRole(writer http.ResponseWriter, request 
 func (handler *roleHandler) RemoveMemberFromRole(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
-	if organizationId == "" {
-		http.Error(writer, "No Organization ID Found", http.StatusBadRequest)
-		return
-	}
 	roleId := params["roleId"]
-	if roleId == "" {
-		http.Error(writer, "No Role ID Found", http.StatusBadRequest)
-		return
-	}
 	memberId := params["memberId"]
-	if memberId == "" {
-		http.Error(writer, "No Member ID Found", http.StatusBadRequest)
-		return
-	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
