@@ -68,11 +68,11 @@ func (handler *userHandler) UpdateUser(writer http.ResponseWriter, request *http
 		return
 	}
 
-	err := request.ParseMultipartForm(10 << 20) // 10 MB limit on pfp size
-	if err != nil {
-		http.Error(writer, "Unable to parse form (is image too large?)", http.StatusBadRequest)
-		return
-	}
+	// err := request.ParseMultipartForm(10 << 20) // 10 MB limit on pfp size
+	// if err != nil {
+	// 	http.Error(writer, "Unable to parse form (is image too large?)", http.StatusBadRequest)
+	// 	return
+	// }
 	var pfpUrl *string
 	pfpFile, _, err := request.FormFile("profile_picture")
 	if err == nil {
