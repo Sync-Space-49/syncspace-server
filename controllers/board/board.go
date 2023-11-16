@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
+	"github.com/Sync-Space-49/syncspace-server/controllers/user"
 
 	"github.com/google/uuid"
 )
@@ -19,11 +20,13 @@ func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, tokenCustomClai
 		return nil, err
 	}
 
+	orgPrefix := fmt.Sprintf("org%s", orgId)
 	var viewableBoards []Board
 	for _, board := range orgBoards {
 		if board.IsPrivate {
-			readBoardPerm := fmt.Sprintf("org%s:board%s:read", orgId, board.Id)
-			canReadBoard := tokenCustomClaims.HasPermission(readBoardPerm)
+			readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, board.Id)
+			boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+			canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
 			if !canReadBoard {
 				continue
 			}
@@ -258,6 +261,20 @@ func (c *Controller) DeleteBoardById(ctx context.Context, boardId string) error 
 		return err
 	}
 	return nil
+}
+
+func (c *Controller) GetMembersByBoardId(boardId string) (*[]user.User, error) {
+	boardMemberRoleName := fmt.Sprintf("board%s:member", boardId)
+	roles, err := auth.GetRoles(&boardMemberRoleName)
+	if err != nil {
+		return nil, err
+	}
+	boardMemberRole := (*roles)[0]
+	members, err := user.GetUsersWithRole(boardMemberRole.Id)
+	if err != nil {
+		return nil, err
+	}
+	return members, nil
 }
 
 func (c *Controller) AddMemberToBoard(userId string, orgId string, boardId string) error {

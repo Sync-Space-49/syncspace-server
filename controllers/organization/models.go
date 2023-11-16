@@ -23,4 +23,5 @@ type Organization struct {
 	OwnerId     string    `db:"owner_id" json:"owner_id"`
 	Name        string    `db:"name" json:"name"`
 	Description string    `db:"description" json:"description"`
+	AiEnabled   bool      `db:"ai_enabled" json:"ai_enabled"`
 }

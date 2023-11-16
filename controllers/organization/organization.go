@@ -8,15 +8,15 @@ import (
 	"github.com/google/uuid"
 )
 
-func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description *string) (*Organization, error) {
+func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description *string, aiEnabled bool) (*Organization, error) {
 	var query string
 	if description == nil {
-		query = `INSERT INTO Organizations (id, owner_id, name) VALUES ($1, $2, $3);`
+		query = `INSERT INTO Organizations (id, owner_id, name, ai_enabled) VALUES ($1, $2, $3, $5);`
 	} else {
-		query = `INSERT INTO Organizations (id, owner_id, name, description) VALUES ($1, $2, $3, $4);`
+		query = `INSERT INTO Organizations (id, owner_id, name, description, ai_enabled) VALUES ($1, $2, $3, $4, $5);`
 	}
 	orgID := uuid.New().String()
-	_, err := c.db.DB.ExecContext(ctx, query, orgID, userId, title, description)
+	_, err := c.db.DB.ExecContext(ctx, query, orgID, userId, title, description, aiEnabled)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +61,14 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 		Name:        fmt.Sprintf("org%s:remove_members", organizationId),
 		Description: fmt.Sprintf("Allows you to remove members from the organization with id %s", organizationId),
 	}
+	createBoardsPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:create_boards", organizationId),
+		Description: fmt.Sprintf("Allows you to create boards in the organization with id %s", organizationId),
+	}
+	boardsAdminPerm := auth.Permission{
+		Name:        fmt.Sprintf("org%s:boards_admin", organizationId),
+		Description: fmt.Sprintf("Allows you to so anything in regards to any board in organizaiton with id %s", organizationId),
+	}
 	createRolesPerm := auth.Permission{
 		Name:        fmt.Sprintf("org%s:create_roles", organizationId),
 		Description: fmt.Sprintf("Allows you to use create roles for the organization with id %s", organizationId),
@@ -83,9 +91,9 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 	}
 
 	orgMemberPermissions := []auth.Permission{
-		readPerm,
+		readPerm, createBoardsPerm,
 	}
-	orgOwnerPermissions := append(orgMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm, createRolesPerm, editRolesPerm, deleteRolesPerm, addRolesPerm, removeRolesPerm)
+	orgOwnerPermissions := append(orgMemberPermissions, deletePerm, updatePerm, addMembersPerm, removeMembersPerm, boardsAdminPerm, createRolesPerm, editRolesPerm, deleteRolesPerm, addRolesPerm, removeRolesPerm)
 
 	// Because the owner role has all permissions, we only need to call CreatePermissions once
 	err = auth.CreatePermissions(orgOwnerPermissions)
@@ -132,7 +140,7 @@ func (c *Controller) GetOrganizationById(ctx context.Context, organizationId str
 	return &organization, nil
 }
 
-func (c *Controller) UpdateOrganizationById(ctx context.Context, organizationId string, title string, description string) error {
+func (c *Controller) UpdateOrganizationById(ctx context.Context, organizationId string, title string, description string, ai_enabled bool) error {
 	org, err := c.GetOrganizationById(ctx, organizationId)
 	if err != nil {
 		return err
@@ -145,8 +153,8 @@ func (c *Controller) UpdateOrganizationById(ctx context.Context, organizationId 
 	}
 
 	_, err = c.db.DB.ExecContext(ctx, `
-		UPDATE Organizations SET name=$1, description=$2 WHERE id=$3;
-	`, title, description, organizationId)
+		UPDATE Organizations SET name=$1, description=$2, ai_enabled=$3 WHERE id=$4;
+	`, title, description, ai_enabled, organizationId)
 	if err != nil {
 		return err
 	}
