@@ -190,13 +190,13 @@ func (c *Controller) GetAssignedCardsByUserId(ctx context.Context, userId string
 
 // TODO - change select statement to a join to ensure the card is in the stack
 
-func (c *Controller) GetAssignedCardsByUserIdOnStack(ctx context.Context, stackId string, userId string) (*[]string, error) {
-	var cardIds []string
-	err := c.db.DB.SelectContext(ctx, &cardIds, `
-		SELECT card_id FROM assigned_cards WHERE user_id=$1;
-	`, userId)
-	if err != nil {
-		return nil, err
-	}
-	return &cardIds, nil
-}
+// func (c *Controller) GetAssignedCardsByUserIdOnStack(ctx context.Context, stackId string, userId string) (*[]string, error) {
+// 	var cardIds []string
+// 	err := c.db.DB.SelectContext(ctx, &cardIds, `
+// 		SELECT card_id FROM assigned_cards WHERE user_id=$1;
+// 	`, userId)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &cardIds, nil
+// }

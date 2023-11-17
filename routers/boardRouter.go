@@ -1141,38 +1141,38 @@ func (handler *boardHandler) DeleteCard(writer http.ResponseWriter, request *htt
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-func (handler *boardHandler) GetAllAssignedCardsInBoard(writer http.ResponseWriter, request *http.Request) {
-	// For now, this method only works on yourself.
+// func (handler *boardHandler) GetAllAssignedCards(writer http.ResponseWriter, request *http.Request) {
+// 	// For now, this method only works on yourself.
 
-	params := mux.Vars(request)
-	organizationId := params["organizationId"]
-	boardId := params["boardId"]
-	// stackId := params["stackId"]
-	// cardId := params["cardId"]
-	memberId := params["userId"]
+// 	params := mux.Vars(request)
+// 	organizationId := params["organizationId"]
+// 	boardId := params["boardId"]
+// 	// stackId := params["stackId"]
+// 	// cardId := params["cardId"]
+// 	memberId := params["userId"]
 
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
-	userId := token.RegisteredClaims.Subject
-	orgPrefix := fmt.Sprintf("org%s", organizationId)
-	readCardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	canReadCard := tokenCustomClaims.HasAnyPermissions(readCardPerm, boardsAdminPerm)
-	if !canReadCard {
-		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read cards on board with id: %s", userId, boardId), http.StatusForbidden)
-		return
-	}
+// 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+// 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+// 	userId := token.RegisteredClaims.Subject
+// 	orgPrefix := fmt.Sprintf("org%s", organizationId)
+// 	readCardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
+// 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+// 	canReadCard := tokenCustomClaims.HasAnyPermissions(readCardPerm, boardsAdminPerm)
+// 	if !canReadCard {
+// 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read cards on board with id: %s", userId, boardId), http.StatusForbidden)
+// 		return
+// 	}
 
-	ctx := request.Context()
-	cards, err := handler.controller.GetAssignedCardsByUserId(ctx, memberId)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get assigned cards for user with id %s: %s", memberId, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(cards)
-}
+// 	ctx := request.Context()
+// 	cards, err := handler.controller.GetAssignedCardsByUserId(ctx, memberId)
+// 	if err != nil {
+// 		http.Error(writer, fmt.Sprintf("Failed to get assigned cards for user with id %s: %s", memberId, err.Error()), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	writer.Header().Set("Content-Type", "application/json")
+// 	writer.WriteHeader(http.StatusOK)
+// 	json.NewEncoder(writer).Encode(cards)
+// }
 
 func (handler *boardHandler) GetAllAssignedUsers(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
@@ -1208,36 +1208,36 @@ func (handler *boardHandler) GetAllAssignedUsers(writer http.ResponseWriter, req
 	json.NewEncoder(writer).Encode(cards)
 }
 
-func (handler *boardHandler) GetAllAssignedCardsOnStack(writer http.ResponseWriter, request *http.Request) {
-	params := mux.Vars(request)
-	organizationId := params["organizationId"]
-	boardId := params["boardId"]
-	stackId := params["stackId"]
-	cardId := params["cardId"]
-	memberId := request.FormValue("user_id")
+// func (handler *boardHandler) GetAllAssignedCardsOnStack(writer http.ResponseWriter, request *http.Request) {
+// 	params := mux.Vars(request)
+// 	organizationId := params["organizationId"]
+// 	boardId := params["boardId"]
+// 	stackId := params["stackId"]
+// 	cardId := params["cardId"]
+// 	memberId := request.FormValue("user_id")
 
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
-	userId := token.RegisteredClaims.Subject
-	orgPrefix := fmt.Sprintf("org%s", organizationId)
-	readCardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-	canReadCard := tokenCustomClaims.HasAnyPermissions(readCardPerm, boardsAdminPerm)
-	if !canReadCard {
-		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
-		return
-	}
+// 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+// 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+// 	userId := token.RegisteredClaims.Subject
+// 	orgPrefix := fmt.Sprintf("org%s", organizationId)
+// 	readCardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
+// 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+// 	canReadCard := tokenCustomClaims.HasAnyPermissions(readCardPerm, boardsAdminPerm)
+// 	if !canReadCard {
+// 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
+// 		return
+// 	}
 
-	ctx := request.Context()
-	cards, err := handler.controller.GetAssignedCardsByUserIdOnStack(ctx, stackId, memberId)
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to get assigned cards for user with id %s on stack with id %s in board with id %s: %s", memberId, stackId, boardId, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-	json.NewEncoder(writer).Encode(cards)
-}
+// 	ctx := request.Context()
+// 	cards, err := handler.controller.GetAssignedCardsByUserIdOnStack(ctx, stackId, memberId)
+// 	if err != nil {
+// 		http.Error(writer, fmt.Sprintf("Failed to get assigned cards for user with id %s on stack with id %s in board with id %s: %s", memberId, stackId, boardId, err.Error()), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	writer.Header().Set("Content-Type", "application/json")
+// 	writer.WriteHeader(http.StatusOK)
+// 	json.NewEncoder(writer).Encode(cards)
+// }
 
 func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
