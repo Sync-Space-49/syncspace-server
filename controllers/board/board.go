@@ -68,11 +68,31 @@ func (c *Controller) GetCompleteBoardById(ctx context.Context, boardId string) (
 			if len(*stacks) > 0 {
 				for _, stack := range *stacks {
 					completeStack := CopyToCompleteStack(stack)
+					completeStack.Cards = make([]CompleteCard, 0)
 					cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
 					if err != nil {
 						return nil, err
 					}
-					completeStack.Cards = *cards
+					if len(*cards) > 0 {
+						for _, card := range *cards {
+							completeCard := CopyToCompleteCard(card)
+							completeCard.Assignments = make([]string, 0)
+							assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
+							if err != nil {
+								return nil, err
+							}
+							if len(*assignments) > 0 {
+								for _, assignment := range *assignments {
+									completeCard.Assignments = append(completeCard.Assignments, assignment)
+								}
+							} else {
+								completeCard.Assignments = make([]string, 0)
+							}
+							completeStack.Cards = append(completeStack.Cards, completeCard)
+						}
+					} else {
+						completeStack.Cards = make([]CompleteCard, 0)
+					}
 					completePanel.Stacks = append(completePanel.Stacks, completeStack)
 				}
 			} else {

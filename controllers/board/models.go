@@ -49,11 +49,11 @@ type Board struct {
 }
 
 type CompleteStack struct {
-	Id       uuid.UUID `db:"id" json:"id"`
-	Title    string    `db:"title" json:"title"`
-	Position int       `db:"position" json:"position"`
-	PanelId  uuid.UUID `db:"panel_id" json:"panel_id"`
-	Cards    []Card    `json:"cards"`
+	Id       uuid.UUID      `db:"id" json:"id"`
+	Title    string         `db:"title" json:"title"`
+	Position int            `db:"position" json:"position"`
+	PanelId  uuid.UUID      `db:"panel_id" json:"panel_id"`
+	Cards    []CompleteCard `json:"cards"`
 }
 
 type CompletePanel struct {
@@ -72,4 +72,13 @@ type CompleteBoard struct {
 	ModifiedAt string          `db:"modified_at" json:"modified_at"`
 	IsPrivate  bool            `db:"is_private" json:"is_private"`
 	Panels     []CompletePanel `json:"panels"`
+}
+
+type CompleteCard struct {
+	Id          uuid.UUID `db:"id" json:"id"`
+	Title       string    `db:"title" json:"title"`
+	Description string    `db:"description" json:"description"`
+	Position    int       `db:"position" json:"position"`
+	StackId     uuid.UUID `db:"stack_id" json:"stack_id"`
+	Assignments []string  `json:"assignments"`
 }

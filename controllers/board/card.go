@@ -200,3 +200,25 @@ func (c *Controller) GetAssignedCardsByUserId(ctx context.Context, userId string
 // 	}
 // 	return &cardIds, nil
 // }
+
+func (c *Controller) GetCompleteCardById(ctx context.Context, cardId string) (*CompleteCard, error) {
+	card, err := c.GetCardById(ctx, cardId)
+	if err != nil {
+		return nil, err
+	}
+	completeCard := CopyToCompleteCard(*card)
+	completeCard.Assignments = make([]string, 0)
+	assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
+	if err != nil {
+		return nil, err
+	}
+	if len(*assignments) > 0 {
+		for _, assignment := range *assignments {
+			completeCard.Assignments = append(completeCard.Assignments, assignment)
+		}
+	} else {
+		completeCard.Assignments = make([]string, 0)
+	}
+
+	return &completeCard, nil
+}
