@@ -76,6 +76,8 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE")
 
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllAssignedUsers))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AssignCardToUser))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UnassignCardFromUser))).Methods("DELETE")
 
 	return handler.router
 }
@@ -1139,13 +1141,15 @@ func (handler *boardHandler) DeleteCard(writer http.ResponseWriter, request *htt
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-func (handler *boardHandler) GetAllAssignedCards(writer http.ResponseWriter, request *http.Request) {
+func (handler *boardHandler) GetAllAssignedCardsInBoard(writer http.ResponseWriter, request *http.Request) {
+	// For now, this method only works on yourself.
+
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
 	boardId := params["boardId"]
 	// stackId := params["stackId"]
-	cardId := params["cardId"]
-	memberId := params["memberId"]
+	// cardId := params["cardId"]
+	memberId := params["userId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -1155,7 +1159,7 @@ func (handler *boardHandler) GetAllAssignedCards(writer http.ResponseWriter, req
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
 	canReadCard := tokenCustomClaims.HasAnyPermissions(readCardPerm, boardsAdminPerm)
 	if !canReadCard {
-		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read cards on board with id: %s", userId, boardId), http.StatusForbidden)
 		return
 	}
 
@@ -1196,6 +1200,9 @@ func (handler *boardHandler) GetAllAssignedUsers(writer http.ResponseWriter, req
 		http.Error(writer, fmt.Sprintf("Failed to get assigned users for card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
 		return
 	}
+	if cards == nil {
+		cards = &[]string{}
+	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(cards)
@@ -1207,7 +1214,7 @@ func (handler *boardHandler) GetAllAssignedCardsOnStack(writer http.ResponseWrit
 	boardId := params["boardId"]
 	stackId := params["stackId"]
 	cardId := params["cardId"]
-	memberId := params["memberId"]
+	memberId := request.FormValue("user_id")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -1238,7 +1245,8 @@ func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, reques
 	boardId := params["boardId"]
 	// stackId := params["stackId"]
 	cardId := params["cardId"]
-	memberId := params["memberId"]
+
+	memberId := request.FormValue("user_id")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -1268,7 +1276,8 @@ func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, re
 	boardId := params["boardId"]
 	// stackId := params["stackId"]
 	cardId := params["cardId"]
-	memberId := params["memberId"]
+
+	memberId := request.FormValue("user_id")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
