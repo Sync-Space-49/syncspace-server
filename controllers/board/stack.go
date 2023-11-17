@@ -112,16 +112,30 @@ func (c *Controller) DeleteStackById(ctx context.Context, panelId string, stackI
 	return nil
 }
 
-func (c *Controller) GetCompleteStackById(ctx context.Context, boardId string) (*CompleteStack, error) {
-	stack, err := c.GetStackById(ctx, boardId)
+func (c *Controller) GetCompleteStackById(ctx context.Context, stackId string) (*CompleteStack, error) {
+	stack, err := c.GetStackById(ctx, stackId)
 	if err != nil {
 		return nil, err
 	}
 	completeStack := CopyToCompleteStack(*stack)
+	completeStack.Cards = make([]CompleteCard, 0)
 	cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
 	if err != nil {
 		return nil, err
 	}
-	completeStack.Cards = *cards
+	if len(*cards) > 0 {
+		for _, card := range *cards {
+			completeCard := CopyToCompleteCard(card)
+			completeCard.Assignments = make([]string, 0)
+			assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
+			if err != nil {
+				return nil, err
+			}
+			completeCard.Assignments = *assignments
+			completeStack.Cards = append(completeStack.Cards, completeCard)
+		}
+	} else {
+		completeStack.Cards = make([]CompleteCard, 0)
+	}
 	return &completeStack, nil
 }

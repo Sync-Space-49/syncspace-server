@@ -145,3 +145,80 @@ func (c *Controller) DeleteCardById(ctx context.Context, stackId string, cardId 
 	}
 	return nil
 }
+
+func (c *Controller) AssignCardToUser(ctx context.Context, cardId string, userId string) error {
+	_, err := c.db.DB.ExecContext(ctx, `
+		INSERT INTO assigned_cards (user_id, card_id) VALUES ($1, $2);
+	`, userId, cardId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) UnassignCardFromUser(ctx context.Context, cardId string, userId string) error {
+	_, err := c.db.DB.ExecContext(ctx, `
+		DELETE FROM assigned_cards WHERE user_id=$1 AND card_id=$2;
+	`, userId, cardId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) GetAssignedUsersByCardId(ctx context.Context, cardId string) (*[]string, error) {
+	var userIds []string
+	err := c.db.DB.SelectContext(ctx, &userIds, `
+		SELECT user_id FROM assigned_cards WHERE card_id=$1;
+	`, cardId)
+	if err != nil {
+		return nil, err
+	}
+	return &userIds, nil
+}
+
+func (c *Controller) GetAssignedCardsByUserId(ctx context.Context, userId string) (*[]string, error) {
+	var cardIds []string
+	err := c.db.DB.SelectContext(ctx, &cardIds, `
+		SELECT card_id FROM assigned_cards WHERE user_id=$1;
+	`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &cardIds, nil
+}
+
+// TODO - change select statement to a join to ensure the card is in the stack
+
+// func (c *Controller) GetAssignedCardsByUserIdOnStack(ctx context.Context, stackId string, userId string) (*[]string, error) {
+// 	var cardIds []string
+// 	err := c.db.DB.SelectContext(ctx, &cardIds, `
+// 		SELECT card_id FROM assigned_cards WHERE user_id=$1;
+// 	`, userId)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &cardIds, nil
+// }
+
+func (c *Controller) GetCompleteCardById(ctx context.Context, cardId string) (*CompleteCard, error) {
+	card, err := c.GetCardById(ctx, cardId)
+	if err != nil {
+		return nil, err
+	}
+	completeCard := CopyToCompleteCard(*card)
+	completeCard.Assignments = make([]string, 0)
+	assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
+	if err != nil {
+		return nil, err
+	}
+	if len(*assignments) > 0 {
+		for _, assignment := range *assignments {
+			completeCard.Assignments = append(completeCard.Assignments, assignment)
+		}
+	} else {
+		completeCard.Assignments = make([]string, 0)
+	}
+
+	return &completeCard, nil
+}
