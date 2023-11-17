@@ -126,7 +126,7 @@ func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId
 	return nil
 }
 
-func (c *Controller) DeleteCardById(ctx context.Context, stackId, cardId string) error {
+func (c *Controller) DeleteCardById(ctx context.Context, stackId string, cardId string) error {
 	card, err := c.GetCardById(ctx, cardId)
 	if err != nil {
 		return err
