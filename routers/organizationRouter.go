@@ -75,6 +75,7 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(org)
 }
 
 func (handler *organizationHandler) GetOrganization(writer http.ResponseWriter, request *http.Request) {

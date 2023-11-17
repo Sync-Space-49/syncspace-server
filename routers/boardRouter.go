@@ -148,6 +148,7 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(board)
 }
 
 func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.Request) {
