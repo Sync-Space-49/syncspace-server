@@ -128,7 +128,7 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", orgId)
-	createBoardsPerm := fmt.Sprintf("%s:create_board", orgPrefix)
+	createBoardsPerm := fmt.Sprintf("%s:create_boards", orgPrefix)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
 	canCreateBoards := tokenCustomClaims.HasAnyPermissions(createBoardsPerm, boardsAdminPerm)
 	if !canCreateBoards {
