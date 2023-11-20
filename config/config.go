@@ -49,6 +49,9 @@ type Config struct {
 			ProfilePicture string `default:"/pfp" envconfig:"WASABI_PFP_FILEPATH"`
 		}
 	}
+	AI struct {
+		APIHost string `default:"" envconfig:"AI_API_HOST"`
+	}
 }
 
 var (

@@ -3,6 +3,8 @@ package board
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 )
 
 func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]Card, error) {
@@ -221,4 +223,33 @@ func (c *Controller) GetCompleteCardById(ctx context.Context, cardId string) (*C
 	}
 
 	return &completeCard, nil
+}
+
+func (c *Controller) CreateCardWithAI(ctx context.Context, panelId string) (*Card, error) {
+
+	requestUrl := fmt.Sprintf("%s/ai/generate/card", c.cfg.AI.APIHost)
+	res, err := http.Get(requestUrl)
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+	}
+	// json.Marshal(res)
+	// This prints the AI generated card JSON
+	fmt.Print(res)
+
+	// cardId := uuid.New().String()
+	// // title, description, panelId,
+	// // stackId = "AI Generated Cards"
+
+	// _, err := c.db.DB.ExecContext(ctx, `
+	// 	INSERT INTO Cards (id, title, description, stack_id) VALUES ($1, $2, $3, $4);
+	// `, cardId, title, description, panelId)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// card, err := c.GetCardById(ctx, cardId)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// return card, nil
+	return nil, nil
 }

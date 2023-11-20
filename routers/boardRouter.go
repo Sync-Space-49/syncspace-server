@@ -79,6 +79,8 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AssignCardToUser))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UnassignCardFromUser))).Methods("DELETE")
 
+	handler.router.Handle(fmt.Sprintf("%s/ai", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCardWithAI))).Methods("GET")
+
 	return handler.router
 }
 
@@ -1299,6 +1301,46 @@ func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, re
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *boardHandler) CreateCardWithAI(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	stackId := params["stackId"]
+
+	title := request.FormValue("title")
+	if title == "" {
+		http.Error(writer, "No Title Found", http.StatusBadRequest)
+		return
+	}
+	description := request.FormValue("description")
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
+		return
+	}
+	createCardPerm := fmt.Sprintf("%s:board%s:create_card", orgPrefix, boardId)
+	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+	canCreateCard := tokenCustomClaims.HasAnyPermissions(createCardPerm, boardsAdminPerm)
+	if !canCreateCard {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create a card on board with id: %s", userId, boardId), http.StatusForbidden)
+		return
+	}
+
+	err := handler.controller.CreateCardWithAI(request.Context(), title, description, stackId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
 }
 
 // func (handler *boardHandler) CreateTag(writer http.ResponseWriter, request *http.Request) {
