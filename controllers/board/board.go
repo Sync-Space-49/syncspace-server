@@ -3,6 +3,7 @@ package board
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
@@ -330,4 +331,15 @@ func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId 
 		return err
 	}
 	return nil
+}
+
+func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*Board, error) {
+	requestUrl := fmt.Sprintf("%s/ai/generate/card", c.cfg.AI.APIHost)
+	res, err := http.Get(requestUrl)
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+	}
+	fmt.Print(res)
+	return nil, nil
+
 }

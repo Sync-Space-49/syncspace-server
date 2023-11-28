@@ -82,3 +82,15 @@ type CompleteCard struct {
 	StackId     uuid.UUID `db:"stack_id" json:"stack_id"`
 	Assignments []string  `json:"assignments"`
 }
+
+type AIGeneratedCard struct {
+	AssignedUsers   []string `json:"assigned"`
+	CardTitle       string   `json:"title"`
+	CardDesc        string   `json:"description"`
+	CardStoryPoints string   `json:"story_points"`
+}
+
+type AIGeneratedBoard struct {
+	SprintTitle    string            `json:"sprint_title"`
+	GeneratedCards []AIGeneratedCard `json:"generated_cards"`
+}
