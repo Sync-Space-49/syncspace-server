@@ -494,13 +494,14 @@ func (handler *boardHandler) CreatePanel(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	err := handler.controller.CreatePanel(request.Context(), title, boardId)
+	panel, err := handler.controller.CreatePanel(request.Context(), title, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create panel: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(panel)
 }
 
 func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.Request) {
@@ -749,13 +750,14 @@ func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	err := handler.controller.CreateStack(request.Context(), title, panelId)
+	stack, err := handler.controller.CreateStack(request.Context(), title, panelId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create stack: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(stack)
 }
 
 func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.Request) {
@@ -1009,13 +1011,14 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	err := handler.controller.CreateCard(request.Context(), title, description, stackId)
+	card, err := handler.controller.CreateCard(request.Context(), title, description, stackId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(card)
 }
 
 func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.Request) {

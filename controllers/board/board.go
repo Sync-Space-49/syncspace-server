@@ -371,7 +371,7 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 
 	var sprints map[string][]AIGeneratedCard
 	// data := []byte(`...`)
-	fmt.Println(data)
+	// fmt.Println(data)
 	err = json.Unmarshal(data, &sprints)
 	if err != nil {
 		log.Fatalf("Error occurred during unmarshalling. %v", err)
@@ -383,18 +383,29 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 	}
 	boardId := newBoard.Id.String()
 
-	c.CreatePanel(ctx, "AI Generated Content", boardId)
+	newPanel, err := c.CreatePanel(ctx, "AI Generated Content", boardId)
+	if err != nil {
+		return nil, err
+	}
+	panelId := newPanel.Id.String()
+
 	for sprint, tasks := range sprints {
-		fmt.Println(sprint)
-		c.CreateStack(ctx, userId, sprint, orgId)
+		// fmt.Println(sprint)
+		newStack, err := c.CreateStack(ctx, sprint, panelId)
+		if err != nil {
+			return nil, err
+		}
 		for _, task := range tasks {
-			fmt.Println(task.CardTitle, task.CardDesc, task.CardStoryPoints)
-			err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints.(string))
+			// fmt.Println(task.CardTitle, task.CardDesc, task.CardStoryPoints)
+			// TODO: Update DB to use story points lol
+			// _, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints.(string), newStack.Id.String()
+			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, newStack.Id.String())
 			if err != nil {
 				// handle the case where task.CardStoryPoints is not a string (or some other error occurred)
+				return nil, err
 			}
 		}
 	}
 
-	return nil, nil
+	return newBoard, nil
 }
