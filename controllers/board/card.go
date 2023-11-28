@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]Card, error) {
@@ -18,22 +20,26 @@ func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]
 	return &cards, nil
 }
 
-func (c *Controller) CreateCard(ctx context.Context, title string, description string, stackId string) error {
+func (c *Controller) CreateCard(ctx context.Context, title string, description string, stackId string) (*Card, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Cards where stack_id=$1;
 	`, stackId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
+	cardId := uuid.New().String()
 	_, err = c.db.DB.ExecContext(ctx, `
-		INSERT INTO Cards (title, description, position, stack_id) VALUES ($1, $2, $3, $4);
-	`, title, description, nextPosition, stackId)
+		INSERT INTO Cards (id, title, description, position, stack_id) VALUES ($1, $2, $3, $4, $5);
+	`, cardId, title, description, nextPosition, stackId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	card, err := c.GetCardById(ctx, cardId)
+	if err != nil {
+		return nil, err
+	}
+	return card, nil
 }
 
 func (c *Controller) GetCardById(ctx context.Context, cardId string) (*Card, error) {

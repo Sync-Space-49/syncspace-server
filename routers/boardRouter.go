@@ -79,7 +79,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AssignCardToUser))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UnassignCardFromUser))).Methods("DELETE")
 
-	// handler.router.Handle(fmt.Sprintf("%s/ai", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCardWithAI))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/ai", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoardWithAI))).Methods("POST")
 
 	return handler.router
 }
@@ -1301,6 +1301,31 @@ func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, re
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusNoContent)
+}
+
+func (handler *boardHandler) CreateBoardWithAI(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	title := request.FormValue("title")
+	description := request.FormValue("description")
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+
+	userId := token.RegisteredClaims.Subject
+
+	if title == "" {
+		http.Error(writer, "No Title Found", http.StatusBadRequest)
+		return
+	}
+
+	ctx := request.Context()
+	board, err := handler.controller.CreateBoardWithAI(ctx, userId, title, description, false, organizationId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create board: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(board)
 }
 
 // func (handler *boardHandler) CreateCardWithAI(writer http.ResponseWriter, request *http.Request) {

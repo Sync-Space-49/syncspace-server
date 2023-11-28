@@ -1,0 +1,124 @@
+{
+    "Sprint 1: Planning and Research": [
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Define the features and functionality needed for the app and establish project goals",
+            "story_points": "M",
+            "title": "Gather project requirements and goals"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Explore different AI technologies for accurately detecting wildlife through the camera",
+            "story_points": "M",
+            "title": "Research wildlife AI detection technology"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Sketch out the user interface and basic functionality of the app",
+            "story_points": "M",
+            "title": "Create initial wireframes and sketches"
+        }
+    ],
+    "Sprint 2: Design and Prototyping": [
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Create the visual design and user interface elements for the app",
+            "story_points": "L",
+            "title": "Design app layout and user interface"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Build a functional prototype of the app to test its basic functionality",
+            "story_points": "L",
+            "title": "Develop a prototype of the app"
+        }
+    ],
+    "Sprint 3: Development": [
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Incorporate the chosen AI technology to accurately detect wildlife through the camera",
+            "story_points": "XL",
+            "title": "Integrate wildlife AI detection technology"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Create a system for users to collect badges for taking pictures of wildlife",
+            "story_points": "L",
+            "title": "Implement badge collection system"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Create the settings page for users to customize their app experience",
+            "story_points": "M",
+            "title": "Design and develop settings page"
+        }
+    ],
+    "Sprint 4: Testing and Refinement": [
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Test the accuracy and reliability of the wildlife AI detection technology",
+            "story_points": "M",
+            "title": "Test AI detection accuracy"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Make any necessary improvements to the app's user interface and overall functionality based on user feedback and testing",
+            "story_points": "L",
+            "title": "Refine user interface and functionality"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Address any bugs or issues found during testing",
+            "story_points": "M",
+            "title": "Fix any bugs or issues"
+        }
+    ],
+    "Sprint 5: Deployment and Release": [
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Gather all necessary materials and information for submitting the app to the app stores",
+            "story_points": "M",
+            "title": "Prepare for app store submission"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Submit the app to the app stores for public release",
+            "story_points": "M",
+            "title": "Release app to the app stores"
+        },
+        {
+            "assigned": [
+                ""
+            ],
+            "description": "Keep an eye on the app's performance and user feedback to make any necessary updates or improvements",
+            "story_points": "S",
+            "title": "Monitor app performance and user feedback"
+        }
+    ]
+}

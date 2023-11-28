@@ -2,8 +2,13 @@ package board
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
@@ -333,13 +338,63 @@ func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId 
 	return nil
 }
 
-func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*Board, error) {
-	requestUrl := fmt.Sprintf("%s/ai/generate/card", c.cfg.AI.APIHost)
-	res, err := http.Get(requestUrl)
+func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name string, description string, isPrivate bool, orgId string) (*Board, error) {
+	requestUrl := fmt.Sprintf("http://%s/api/generate/board", c.cfg.AI.APIHost)
+	formData := url.Values{}
+	formData.Add("title", name)
+	formData.Add("description", description)
+
+	// TODO: Change from hard-coding to variable settings
+	formData.Add("detail_level", "very detailed")
+	formData.Add("story_point_type", "T-Shirt Sizes")
+	formData.Add("story_points", "S, M, L, XL")
+
+	req, err := http.NewRequest("POST", requestUrl, strings.NewReader(formData.Encode()))
 	if err != nil {
 		fmt.Printf("error making http request: %s\n", err)
+		return nil, err
 	}
-	fmt.Print(res)
-	return nil, nil
+	// fmt.Print(res.Body)
+	req.Header.Add("Content-Type", "application/form-data")
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("Error occurred during making request. %v", err)
+		return nil, err
+	}
+	fmt.Println(res.Body)
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Fatalf("Error occurred during conversion of HTTP resonse body into bytes. %v", err)
+		return nil, err
+	}
 
+	var sprints map[string][]AIGeneratedCard
+	// data := []byte(`...`)
+	fmt.Println(data)
+	err = json.Unmarshal(data, &sprints)
+	if err != nil {
+		log.Fatalf("Error occurred during unmarshalling. %v", err)
+		return nil, err
+	}
+	newBoard, err := c.CreateBoard(ctx, userId, name, isPrivate, orgId)
+	if err != nil {
+		return nil, err
+	}
+	boardId := newBoard.Id.String()
+
+	c.CreatePanel(ctx, "AI Generated Content", boardId)
+	for sprint, tasks := range sprints {
+		fmt.Println(sprint)
+		c.CreateStack(ctx, userId, sprint, orgId)
+		for _, task := range tasks {
+			fmt.Println(task.CardTitle, task.CardDesc, task.CardStoryPoints)
+			err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints.(string))
+			if err != nil {
+				// handle the case where task.CardStoryPoints is not a string (or some other error occurred)
+			}
+		}
+	}
+
+	return nil, nil
 }

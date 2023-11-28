@@ -50,7 +50,7 @@ type Config struct {
 		}
 	}
 	AI struct {
-		APIHost string `default:"" envconfig:"AI_API_HOST"`
+		APIHost string `default:"127.0.0.1:3999" envconfig:"AI_API_HOST"`
 	}
 }
 
