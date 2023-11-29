@@ -206,3 +206,11 @@ func (c *Controller) RemoveMember(userId string, organizationId string) error {
 	}
 	return nil
 }
+
+func (c *Controller) CheckAIAvailability(ctx context.Context, organizationId string) (bool, error) {
+	organization, err := c.GetOrganizationById(context.Background(), organizationId)
+	if err != nil {
+		return false, err
+	}
+	return organization.AiEnabled, nil
+}

@@ -3,6 +3,8 @@ package board
 import (
 	"context"
 	"errors"
+
+	"github.com/google/uuid"
 )
 
 func (c *Controller) GetStacksByPanelId(ctx context.Context, panelId string) (*[]Stack, error) {
@@ -16,22 +18,26 @@ func (c *Controller) GetStacksByPanelId(ctx context.Context, panelId string) (*[
 	return &stacks, nil
 }
 
-func (c *Controller) CreateStack(ctx context.Context, title string, panelId string) error {
+func (c *Controller) CreateStack(ctx context.Context, title string, panelId string) (*Stack, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Stacks where panel_id=$1;
 	`, panelId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
+	stackId := uuid.New().String()
 	_, err = c.db.DB.ExecContext(ctx, `
-		INSERT INTO Stacks (title, position, panel_id) VALUES ($1, $2, $3);
-	`, title, nextPosition, panelId)
+		INSERT INTO Stacks (id, title, position, panel_id) VALUES ($1, $2, $3, $4);
+	`, stackId, title, nextPosition, panelId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	stack, err := c.GetStackById(ctx, stackId)
+	if err != nil {
+		return nil, err
+	}
+	return stack, nil
 }
 
 func (c *Controller) GetStackById(ctx context.Context, stackId string) (*Stack, error) {

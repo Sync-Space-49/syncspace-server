@@ -2,7 +2,13 @@ package board
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
@@ -330,4 +336,92 @@ func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId 
 		return err
 	}
 	return nil
+}
+
+func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name string, description string, isPrivate bool, orgId string, detailLevel string, storyPointType string, storyPointExamples string) (*Board, error) {
+	requestUrl := fmt.Sprintf("http://%s/api/generate/board", c.cfg.AI.APIHost)
+	formData := url.Values{}
+	formData.Add("title", name)
+	formData.Add("description", description)
+
+	if detailLevel == "" {
+		formData.Add("detail_level", "very detailed")
+	} else {
+		formData.Add("detail_level", detailLevel)
+	}
+	if storyPointType == "" {
+		formData.Add("story_point_type", "T-Shirt Sizes")
+	} else {
+		formData.Add("story_point_type", storyPointType)
+	}
+	if storyPointExamples == "" {
+		formData.Add("story_points", "S, M, L, XL")
+	} else {
+		formData.Add("story_points", storyPointExamples)
+	}
+
+	req, err := http.NewRequest("POST", requestUrl, strings.NewReader(formData.Encode()))
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/form-data")
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("Error occurred during making request. %v", err)
+		return nil, err
+	}
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Fatalf("Error occurred during conversion of HTTP resonse body into bytes. %v", err)
+		return nil, err
+	}
+
+	var sprints map[string][]AIGeneratedCard
+	err = json.Unmarshal(data, &sprints)
+	if err != nil {
+		log.Fatalf("Error occurred during unmarshalling. %v", err)
+		return nil, err
+	}
+	newBoard, err := c.CreateBoard(ctx, userId, name, isPrivate, orgId)
+	if err != nil {
+		return nil, err
+	}
+	boardId := newBoard.Id.String()
+
+	for sprint, tasks := range sprints {
+		newPanel, err := c.CreatePanel(ctx, sprint, boardId)
+		if err != nil {
+			return nil, err
+		}
+		panelId := newPanel.Id.String()
+		newStack, err := c.CreateStack(ctx, "To-Do", panelId)
+		if err != nil {
+			return nil, err
+		}
+		for _, task := range tasks {
+			// TODO: Update DB to use story points lol
+			// _, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints.(string), newStack.Id.String()
+			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, newStack.Id.String())
+			if err != nil {
+				// handle the case where task.CardStoryPoints is not a string (or some other error occurred)
+				return nil, err
+			}
+		}
+	}
+
+	return newBoard, nil
+}
+
+func (c *Controller) CanUseAIForBoardCreation(ctx context.Context, orgId string) (bool, error) {
+	var ai_enabled bool
+
+	err := c.db.DB.GetContext(ctx, &ai_enabled, `
+		SELECT ai_enabled FROM Organizations WHERE id=$1;
+	`, orgId)
+	if err != nil {
+		return false, err
+	}
+	return ai_enabled, nil
 }

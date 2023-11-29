@@ -3,6 +3,8 @@ package board
 import (
 	"context"
 	"errors"
+
+	"github.com/google/uuid"
 )
 
 func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]Panel, error) {
@@ -16,23 +18,26 @@ func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[
 	return &panels, nil
 }
 
-func (c *Controller) CreatePanel(ctx context.Context, title string, boardId string) error {
+func (c *Controller) CreatePanel(ctx context.Context, title string, boardId string) (*Panel, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Panels where board_id=$1;
 	`, boardId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
+	panelId := uuid.New().String()
 	_, err = c.db.DB.ExecContext(ctx, `
-		INSERT INTO Panels (title, position, board_id) VALUES ($1, $2, $3);
-	`, title, nextPosition, boardId)
+		INSERT INTO Panels (id, title, position, board_id) VALUES ($1, $2, $3, $4);
+	`, panelId, title, nextPosition, boardId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return nil
+	panel, err := c.GetPanelById(ctx, panelId)
+	if err != nil {
+		return nil, err
+	}
+	return panel, nil
 }
 
 func (c *Controller) GetPanelById(ctx context.Context, panelId string) (*Panel, error) {
