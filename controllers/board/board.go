@@ -338,16 +338,28 @@ func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId 
 	return nil
 }
 
-func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name string, description string, isPrivate bool, orgId string) (*Board, error) {
+func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name string, description string, isPrivate bool, orgId string, detailLevel string, storyPointType string, storyPointExamples string) (*Board, error) {
 	requestUrl := fmt.Sprintf("http://%s/api/generate/board", c.cfg.AI.APIHost)
 	formData := url.Values{}
 	formData.Add("title", name)
 	formData.Add("description", description)
 
 	// TODO: Change from hard-coding to variable settings
-	formData.Add("detail_level", "very detailed")
-	formData.Add("story_point_type", "T-Shirt Sizes")
-	formData.Add("story_points", "S, M, L, XL")
+	if detailLevel == "" {
+		formData.Add("detail_level", "very detailed")
+	} else {
+		formData.Add("detail_level", detailLevel)
+	}
+	if storyPointType == "" {
+		formData.Add("story_point_type", "T-Shirt Sizes")
+	} else {
+		formData.Add("story_point_type", storyPointType)
+	}
+	if storyPointExamples == "" {
+		formData.Add("story_points", "S, M, L, XL")
+	} else {
+		formData.Add("story_points", storyPointExamples)
+	}
 
 	req, err := http.NewRequest("POST", requestUrl, strings.NewReader(formData.Encode()))
 	if err != nil {
@@ -362,7 +374,7 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 		log.Fatalf("Error occurred during making request. %v", err)
 		return nil, err
 	}
-	fmt.Println(res.Body)
+	// fmt.Println(res.Body)
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Fatalf("Error occurred during conversion of HTTP resonse body into bytes. %v", err)
@@ -383,15 +395,14 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 	}
 	boardId := newBoard.Id.String()
 
-	newPanel, err := c.CreatePanel(ctx, "AI Generated Content", boardId)
-	if err != nil {
-		return nil, err
-	}
-	panelId := newPanel.Id.String()
-
 	for sprint, tasks := range sprints {
+		newPanel, err := c.CreatePanel(ctx, sprint, boardId)
+		if err != nil {
+			return nil, err
+		}
+		panelId := newPanel.Id.String()
 		// fmt.Println(sprint)
-		newStack, err := c.CreateStack(ctx, sprint, panelId)
+		newStack, err := c.CreateStack(ctx, "To-Do", panelId)
 		if err != nil {
 			return nil, err
 		}
@@ -408,4 +419,16 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 	}
 
 	return newBoard, nil
+}
+
+func (c *Controller) CanUseAIForBoardCreation(ctx context.Context, orgId string) (bool, error) {
+	var ai_enabled bool
+
+	err := c.db.DB.GetContext(ctx, &ai_enabled, `
+		SELECT ai_enabled FROM Organizations WHERE id=$1;
+	`, orgId)
+	if err != nil {
+		return false, err
+	}
+	return ai_enabled, nil
 }

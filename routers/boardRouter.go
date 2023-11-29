@@ -1213,37 +1213,6 @@ func (handler *boardHandler) GetAllAssignedUsers(writer http.ResponseWriter, req
 	json.NewEncoder(writer).Encode(cards)
 }
 
-// func (handler *boardHandler) GetAllAssignedCardsOnStack(writer http.ResponseWriter, request *http.Request) {
-// 	params := mux.Vars(request)
-// 	organizationId := params["organizationId"]
-// 	boardId := params["boardId"]
-// 	stackId := params["stackId"]
-// 	cardId := params["cardId"]
-// 	memberId := request.FormValue("user_id")
-
-// 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-// 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
-// 	userId := token.RegisteredClaims.Subject
-// 	orgPrefix := fmt.Sprintf("org%s", organizationId)
-// 	readCardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
-// 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-// 	canReadCard := tokenCustomClaims.HasAnyPermissions(readCardPerm, boardsAdminPerm)
-// 	if !canReadCard {
-// 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
-// 		return
-// 	}
-
-// 	ctx := request.Context()
-// 	cards, err := handler.controller.GetAssignedCardsByUserIdOnStack(ctx, stackId, memberId)
-// 	if err != nil {
-// 		http.Error(writer, fmt.Sprintf("Failed to get assigned cards for user with id %s on stack with id %s in board with id %s: %s", memberId, stackId, boardId, err.Error()), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	writer.Header().Set("Content-Type", "application/json")
-// 	writer.WriteHeader(http.StatusOK)
-// 	json.NewEncoder(writer).Encode(cards)
-// }
-
 func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
@@ -1311,78 +1280,57 @@ func (handler *boardHandler) CreateBoardWithAI(writer http.ResponseWriter, reque
 	organizationId := params["organizationId"]
 	title := request.FormValue("title")
 	description := request.FormValue("description")
-	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 
-	userId := token.RegisteredClaims.Subject
+	detailLevel := request.FormValue("detailLevel")
+	storyPointType := request.FormValue("storyPointType")
+	storyPointExamples := request.FormValue("storyPointExamples")
 
 	if title == "" {
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
 	}
+	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// Check if AI is enabled
+	aiEnabled, err := handler.controller.CanUseAIForBoardCreation(request.Context(), organizationId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to check if AI is enabled: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !aiEnabled {
+		http.Error(writer, fmt.Sprintf("AI is not enabled for organization with id %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	createBoardsPerm := fmt.Sprintf("%s:create_boards", orgPrefix)
+	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+	canCreateBoards := tokenCustomClaims.HasAnyPermissions(createBoardsPerm, boardsAdminPerm)
+	if !canCreateBoards {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create board in org with id: %s", token.RegisteredClaims.Subject, organizationId), http.StatusForbidden)
+		return
+	}
 
 	ctx := request.Context()
-	board, err := handler.controller.CreateBoardWithAI(ctx, userId, title, description, false, organizationId)
+	board, err := handler.controller.CreateBoardWithAI(ctx, userId, title, description, isPrivate, organizationId, detailLevel, storyPointType, storyPointExamples)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create board: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+	err = handler.controller.InitializeBoard(userId, board.Id.String(), organizationId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to initialize board: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
 	json.NewEncoder(writer).Encode(board)
 }
-
-// func (handler *boardHandler) CreateCardWithAI(writer http.ResponseWriter, request *http.Request) {
-// 	params := mux.Vars(request)
-// 	organizationId := params["organizationId"]
-// 	boardId := params["boardId"]
-// 	stackId := params["stackId"]
-
-// 	title := request.FormValue("title")
-// 	if title == "" {
-// 		http.Error(writer, "No Title Found", http.StatusBadRequest)
-// 		return
-// 	}
-// 	description := request.FormValue("description")
-
-// 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
-// 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
-// 	userId := token.RegisteredClaims.Subject
-// 	orgPrefix := fmt.Sprintf("org%s", organizationId)
-// 	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
-// 	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
-// 	if !canReadOrg {
-// 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
-// 		return
-// 	}
-// 	createCardPerm := fmt.Sprintf("%s:board%s:create_card", orgPrefix, boardId)
-// 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
-// 	canCreateCard := tokenCustomClaims.HasAnyPermissions(createCardPerm, boardsAdminPerm)
-// 	if !canCreateCard {
-// 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create a card on board with id: %s", userId, boardId), http.StatusForbidden)
-// 		return
-// 	}
-
-// 	err := handler.controller.CreateCardWithAI(request.Context(), panelId)
-// 	if err != nil {
-// 		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	writer.Header().Set("Content-Type", "application/json")
-// 	writer.WriteHeader(http.StatusCreated)
-// }
-
-// func (handler *boardHandler) CreateTag(writer http.ResponseWriter, request *http.Request) {
-
-// }
-
-// func (handler *boardHandler) DeleteTag(writer http.ResponseWriter, request *http.Request) {
-
-// }
-
-// func (handler *boardHandler) AddTagToCard(writer http.ResponseWriter, request *http.Request) {
-
-// }
-
-// func (handler *boardHandler) RemoveTagFromCard(writer http.ResponseWriter, request *http.Request) {
-
-// }
