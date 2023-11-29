@@ -160,6 +160,17 @@ func (c *Controller) DeleteUserById(ctx context.Context, userId string) error {
 	return nil
 }
 
+func (c *Controller) GetUserOwnedOrganizationsById(ctx context.Context, userId string) (*[]organization.Organization, error) {
+	var organizations []organization.Organization
+	err := c.db.DB.SelectContext(ctx, &organizations, `
+		SELECT * FROM Organizations WHERE owner_id=$1;
+	`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &organizations, nil
+}
+
 func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string) (*[]organization.Organization, error) {
 	usersRoles, err := auth.GetUserRoles(userId)
 	if err != nil {
