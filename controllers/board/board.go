@@ -344,7 +344,6 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 	formData.Add("title", name)
 	formData.Add("description", description)
 
-	// TODO: Change from hard-coding to variable settings
 	if detailLevel == "" {
 		formData.Add("detail_level", "very detailed")
 	} else {
@@ -366,7 +365,6 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 		fmt.Printf("error making http request: %s\n", err)
 		return nil, err
 	}
-	// fmt.Print(res.Body)
 	req.Header.Add("Content-Type", "application/form-data")
 	client := &http.Client{}
 	res, err := client.Do(req)
@@ -374,7 +372,6 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 		log.Fatalf("Error occurred during making request. %v", err)
 		return nil, err
 	}
-	// fmt.Println(res.Body)
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Fatalf("Error occurred during conversion of HTTP resonse body into bytes. %v", err)
@@ -382,8 +379,6 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 	}
 
 	var sprints map[string][]AIGeneratedCard
-	// data := []byte(`...`)
-	// fmt.Println(data)
 	err = json.Unmarshal(data, &sprints)
 	if err != nil {
 		log.Fatalf("Error occurred during unmarshalling. %v", err)
@@ -401,13 +396,11 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 			return nil, err
 		}
 		panelId := newPanel.Id.String()
-		// fmt.Println(sprint)
 		newStack, err := c.CreateStack(ctx, "To-Do", panelId)
 		if err != nil {
 			return nil, err
 		}
 		for _, task := range tasks {
-			// fmt.Println(task.CardTitle, task.CardDesc, task.CardStoryPoints)
 			// TODO: Update DB to use story points lol
 			// _, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints.(string), newStack.Id.String()
 			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, newStack.Id.String())
