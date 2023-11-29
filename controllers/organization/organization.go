@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
+	"github.com/Sync-Space-49/syncspace-server/models"
 	"github.com/google/uuid"
 )
 
-func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description *string, aiEnabled bool) (*Organization, error) {
+func (c *Controller) CreateOrganization(ctx context.Context, userId string, title string, description *string, aiEnabled bool) (*models.Organization, error) {
 	var query string
 	if description == nil {
 		query = `INSERT INTO Organizations (id, owner_id, name, ai_enabled) VALUES ($1, $2, $3, $5);`
@@ -129,8 +130,8 @@ func (c *Controller) InitializeOrganization(ownerId string, organizationId strin
 	return nil
 }
 
-func (c *Controller) GetOrganizationById(ctx context.Context, organizationId string) (*Organization, error) {
-	var organization Organization
+func (c *Controller) GetOrganizationById(ctx context.Context, organizationId string) (*models.Organization, error) {
+	var organization models.Organization
 	err := c.db.DB.GetContext(ctx, &organization, `
 		SELECT * FROM Organizations WHERE id=$1;
 	`, organizationId)

@@ -1,4 +1,4 @@
-package organization
+package models
 
 import (
 	"github.com/Sync-Space-49/syncspace-server/config"
@@ -6,13 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type Controller struct {
+type OrganizationController struct {
 	cfg *config.Config
 	db  *db.DB
 }
 
-func NewController(cfg *config.Config, db *db.DB) *Controller {
-	return &Controller{
+func NewOrganizationController(cfg *config.Config, db *db.DB) *OrganizationController {
+	return &OrganizationController{
 		cfg: cfg,
 		db:  db,
 	}

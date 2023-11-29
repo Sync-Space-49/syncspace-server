@@ -3,10 +3,12 @@ package board
 import (
 	"context"
 	"errors"
+
+	"github.com/Sync-Space-49/syncspace-server/models"
 )
 
-func (c *Controller) GetStacksByPanelId(ctx context.Context, panelId string) (*[]Stack, error) {
-	stacks := make([]Stack, 0)
+func (c *Controller) GetStacksByPanelId(ctx context.Context, panelId string) (*[]models.Stack, error) {
+	stacks := make([]models.Stack, 0)
 	err := c.db.DB.SelectContext(ctx, &stacks, `
 		SELECT * FROM Stacks WHERE panel_id=$1 ORDER BY position ASC;
 	`, panelId)
@@ -34,8 +36,8 @@ func (c *Controller) CreateStack(ctx context.Context, title string, panelId stri
 	return nil
 }
 
-func (c *Controller) GetStackById(ctx context.Context, stackId string) (*Stack, error) {
-	stack := Stack{}
+func (c *Controller) GetStackById(ctx context.Context, stackId string) (*models.Stack, error) {
+	stack := models.Stack{}
 	err := c.db.DB.GetContext(ctx, &stack, `
 		SELECT * FROM Stacks WHERE id=$1;
 	`, stackId)
@@ -112,20 +114,20 @@ func (c *Controller) DeleteStackById(ctx context.Context, panelId string, stackI
 	return nil
 }
 
-func (c *Controller) GetCompleteStackById(ctx context.Context, stackId string) (*CompleteStack, error) {
+func (c *Controller) GetCompleteStackById(ctx context.Context, stackId string) (*models.CompleteStack, error) {
 	stack, err := c.GetStackById(ctx, stackId)
 	if err != nil {
 		return nil, err
 	}
-	completeStack := CopyToCompleteStack(*stack)
-	completeStack.Cards = make([]CompleteCard, 0)
+	completeStack := models.CopyToCompleteStack(*stack)
+	completeStack.Cards = make([]models.CompleteCard, 0)
 	cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
 	if err != nil {
 		return nil, err
 	}
 	if len(*cards) > 0 {
 		for _, card := range *cards {
-			completeCard := CopyToCompleteCard(card)
+			completeCard := models.CopyToCompleteCard(card)
 			completeCard.Assignments = make([]string, 0)
 			assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
 			if err != nil {
@@ -135,7 +137,7 @@ func (c *Controller) GetCompleteStackById(ctx context.Context, stackId string) (
 			completeStack.Cards = append(completeStack.Cards, completeCard)
 		}
 	} else {
-		completeStack.Cards = make([]CompleteCard, 0)
+		completeStack.Cards = make([]models.CompleteCard, 0)
 	}
 	return &completeStack, nil
 }

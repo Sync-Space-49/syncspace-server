@@ -3,10 +3,12 @@ package board
 import (
 	"context"
 	"errors"
+
+	"github.com/Sync-Space-49/syncspace-server/models"
 )
 
-func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]Panel, error) {
-	panels := make([]Panel, 0)
+func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]models.Panel, error) {
+	panels := make([]models.Panel, 0)
 	err := c.db.DB.SelectContext(ctx, &panels, `
 		SELECT * FROM Panels WHERE board_id=$1 ORDER BY position ASC;
 	`, boardId)
@@ -35,8 +37,8 @@ func (c *Controller) CreatePanel(ctx context.Context, title string, boardId stri
 	return nil
 }
 
-func (c *Controller) GetPanelById(ctx context.Context, panelId string) (*Panel, error) {
-	var panel Panel
+func (c *Controller) GetPanelById(ctx context.Context, panelId string) (*models.Panel, error) {
+	var panel models.Panel
 	err := c.db.DB.GetContext(ctx, &panel, `
 		SELECT * FROM Panels WHERE id=$1;
 	`, panelId)
@@ -113,28 +115,28 @@ func (c *Controller) DeletePanelById(ctx context.Context, boardId string, panelI
 	return nil
 }
 
-func (c *Controller) GetCompletePanelById(ctx context.Context, panelId string) (*CompletePanel, error) {
+func (c *Controller) GetCompletePanelById(ctx context.Context, panelId string) (*models.CompletePanel, error) {
 	panel, err := c.GetPanelById(ctx, panelId)
 	if err != nil {
 		return nil, err
 	}
-	completePanel := CopyToCompletePanel(*panel)
-	completePanel.Stacks = make([]CompleteStack, 0)
+	completePanel := models.CopyToCompletePanel(*panel)
+	completePanel.Stacks = make([]models.CompleteStack, 0)
 	stacks, err := c.GetStacksByPanelId(ctx, panel.Id.String())
 	if err != nil {
 		return nil, err
 	}
 	if len(*stacks) > 0 {
 		for _, stack := range *stacks {
-			completeStack := CopyToCompleteStack(stack)
-			completeStack.Cards = make([]CompleteCard, 0)
+			completeStack := models.CopyToCompleteStack(stack)
+			completeStack.Cards = make([]models.CompleteCard, 0)
 			cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
 			if err != nil {
 				return nil, err
 			}
 			if len(*cards) > 0 {
 				for _, card := range *cards {
-					completeCard := CopyToCompleteCard(card)
+					completeCard := models.CopyToCompleteCard(card)
 					completeCard.Assignments = make([]string, 0)
 					assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
 					if err != nil {
@@ -150,12 +152,12 @@ func (c *Controller) GetCompletePanelById(ctx context.Context, panelId string) (
 					completeStack.Cards = append(completeStack.Cards, completeCard)
 				}
 			} else {
-				completeStack.Cards = make([]CompleteCard, 0)
+				completeStack.Cards = make([]models.CompleteCard, 0)
 			}
 			completePanel.Stacks = append(completePanel.Stacks, completeStack)
 		}
 	} else {
-		completePanel.Stacks = make([]CompleteStack, 0)
+		completePanel.Stacks = make([]models.CompleteStack, 0)
 	}
 	return &completePanel, nil
 }

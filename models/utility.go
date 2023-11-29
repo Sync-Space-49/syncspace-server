@@ -1,4 +1,4 @@
-package board
+package models
 
 func CopyToCompleteBoard(source Board) CompleteBoard {
 	dest := CompleteBoard{}

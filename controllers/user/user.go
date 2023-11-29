@@ -10,14 +10,14 @@ import (
 	"strings"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
-	"github.com/Sync-Space-49/syncspace-server/controllers/organization"
+	"github.com/Sync-Space-49/syncspace-server/models"
 	"github.com/jmoiron/sqlx"
 )
 
-func (c *Controller) GetUserById(userId string) (*User, error) {
+func (c *Controller) GetUserById(userId string) (*models.User, error) {
 	managementToken, err := auth.GetManagementToken()
 	if err != nil {
-		return &User{}, err
+		return &models.User{}, err
 	}
 	method := "GET"
 	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
@@ -26,18 +26,18 @@ func (c *Controller) GetUserById(userId string) (*User, error) {
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return &User{}, err
+		return &models.User{}, err
 	}
 	defer res.Body.Close()
 	body, _ := io.ReadAll(res.Body)
 	if res.StatusCode != http.StatusOK {
-		return &User{}, fmt.Errorf("invalid request: %s", string(body))
+		return &models.User{}, fmt.Errorf("invalid request: %s", string(body))
 	}
 
-	var user User
+	var user models.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		return &User{}, err
+		return &models.User{}, err
 	}
 
 	return &user, nil
@@ -160,8 +160,8 @@ func (c *Controller) DeleteUserById(ctx context.Context, userId string) error {
 	return nil
 }
 
-func (c *Controller) GetUserOwnedOrganizationsById(ctx context.Context, userId string) (*[]organization.Organization, error) {
-	var organizations []organization.Organization
+func (c *Controller) GetUserOwnedOrganizationsById(ctx context.Context, userId string) (*[]models.Organization, error) {
+	var organizations []models.Organization
 	err := c.db.DB.SelectContext(ctx, &organizations, `
 		SELECT * FROM Organizations WHERE owner_id=$1;
 	`, userId)
@@ -171,7 +171,7 @@ func (c *Controller) GetUserOwnedOrganizationsById(ctx context.Context, userId s
 	return &organizations, nil
 }
 
-func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string) (*[]organization.Organization, error) {
+func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string) (*[]models.Organization, error) {
 	usersRoles, err := auth.GetUserRoles(userId)
 	if err != nil {
 		return nil, err
@@ -198,17 +198,30 @@ func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string
 	}
 
 	if len(orgIds) == 0 {
-		return &[]organization.Organization{}, nil
+		return &[]models.Organization{}, nil
 	}
 	query, args, err := sqlx.In(`SELECT * FROM Organizations WHERE id IN (?)`, orgIds)
 	if err != nil {
 		return nil, err
 	}
 	query = c.db.DB.Rebind(query)
-	var organizations []organization.Organization
+	var organizations []models.Organization
 	err = c.db.DB.SelectContext(ctx, &organizations, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	return &organizations, nil
+}
+
+func (c *Controller) GetUserAssignedCardsById(ctx context.Context, userId string) (*[]models.Card, error) {
+	var cards []models.Card
+	err := c.db.DB.SelectContext(ctx, &cards, `
+		SELECT * FROM Cards c
+		LEFT JOIN Assigned_Cards ac ON c.id = ac.user_id
+		where ac.user_id = $1
+	`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &cards, nil
 }

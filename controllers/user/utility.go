@@ -8,9 +8,10 @@ import (
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/config"
+	"github.com/Sync-Space-49/syncspace-server/models"
 )
 
-func GetUser(userId string) (*User, error) {
+func GetUser(userId string) (*models.User, error) {
 	cfg, err := config.Get()
 	if err != nil {
 		return nil, err
@@ -44,7 +45,7 @@ func GetUser(userId string) (*User, error) {
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to get users: %s", string(body))
 	}
-	var user User
+	var user models.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
 		return nil, err
@@ -53,7 +54,7 @@ func GetUser(userId string) (*User, error) {
 	return &user, nil
 }
 
-func GetUsersWithRole(roleId string) (*[]User, error) {
+func GetUsersWithRole(roleId string) (*[]models.User, error) {
 	cfg, err := config.Get()
 	if err != nil {
 		return nil, err
@@ -95,10 +96,10 @@ func GetUsersWithRole(roleId string) (*[]User, error) {
 	}
 
 	if len(usersWithRole) == 0 {
-		return &[]User{}, nil
+		return &[]models.User{}, nil
 	}
 
-	var users []User
+	var users []models.User
 	for _, user := range usersWithRole {
 		user, err := GetUser(user.UserId)
 		if err != nil {
@@ -110,7 +111,7 @@ func GetUsersWithRole(roleId string) (*[]User, error) {
 	return &users, nil
 }
 
-func GetOrgMembers(organizationId string) (*[]User, error) {
+func GetOrgMembers(organizationId string) (*[]models.User, error) {
 	orgMemberRoleName := fmt.Sprintf("org%s:member", organizationId)
 	roles, err := auth.GetRoles(&orgMemberRoleName)
 	if err != nil {
@@ -124,7 +125,7 @@ func GetOrgMembers(organizationId string) (*[]User, error) {
 	return users, nil
 }
 
-func GetOrgOwners(organizationId string) (*[]User, error) {
+func GetOrgOwners(organizationId string) (*[]models.User, error) {
 	orgOwnerRoleName := fmt.Sprintf("org%s:owner", organizationId)
 	roles, err := auth.GetRoles(&orgOwnerRoleName)
 	if err != nil {
