@@ -120,7 +120,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 	return nil
 }
 
-func (c *Controller) DeleteUserById(userId string) error {
+func (c *Controller) DeleteUserById(ctx context.Context, userId string) error {
 	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return err
@@ -142,6 +142,19 @@ func (c *Controller) DeleteUserById(userId string) error {
 	}
 	if res.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("failed to delete user: %s", string(body))
+	}
+
+	_, err = c.db.DB.ExecContext(ctx, `DELETE FROM Organizations WHERE owner_id=$1`, userId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `DELETE FROM Boards WHERE owner_id=$1`, userId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `DELETE FROM Assigned_Cards WHERE user_id=$1`, userId)
+	if err != nil {
+		return err
 	}
 
 	return nil
