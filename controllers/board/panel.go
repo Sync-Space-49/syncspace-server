@@ -152,6 +152,7 @@ func (c *Controller) GetCompletePanelById(ctx context.Context, panelId string) (
 			} else {
 				completeStack.Cards = make([]CompleteCard, 0)
 			}
+			completePanel.Stacks = append(completePanel.Stacks, completeStack)
 		}
 	} else {
 		completePanel.Stacks = make([]CompleteStack, 0)
