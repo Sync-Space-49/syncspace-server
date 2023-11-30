@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Sync-Space-49/syncspace-server/models"
 	"github.com/google/uuid"
 )
 
-func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]Card, error) {
-	cards := make([]Card, 0)
+func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]models.Card, error) {
+	cards := make([]models.Card, 0)
 	err := c.db.DB.SelectContext(ctx, &cards, `
 		SELECT * FROM Cards WHERE stack_id=$1 ORDER BY position ASC;
 	`, stackId)
@@ -20,7 +21,7 @@ func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]
 	return &cards, nil
 }
 
-func (c *Controller) CreateCard(ctx context.Context, title string, description string, stackId string) (*Card, error) {
+func (c *Controller) CreateCard(ctx context.Context, title string, description string, stackId string) (*models.Card, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Cards where stack_id=$1;
@@ -42,8 +43,8 @@ func (c *Controller) CreateCard(ctx context.Context, title string, description s
 	return card, nil
 }
 
-func (c *Controller) GetCardById(ctx context.Context, cardId string) (*Card, error) {
-	card := Card{}
+func (c *Controller) GetCardById(ctx context.Context, cardId string) (*models.Card, error) {
+	card := models.Card{}
 	err := c.db.DB.GetContext(ctx, &card, `
 		SELECT * FROM Cards WHERE id=$1;
 	`, cardId)
@@ -209,12 +210,12 @@ func (c *Controller) GetAssignedCardsByUserId(ctx context.Context, userId string
 // 	return &cardIds, nil
 // }
 
-func (c *Controller) GetCompleteCardById(ctx context.Context, cardId string) (*CompleteCard, error) {
+func (c *Controller) GetCompleteCardById(ctx context.Context, cardId string) (*models.CompleteCard, error) {
 	card, err := c.GetCardById(ctx, cardId)
 	if err != nil {
 		return nil, err
 	}
-	completeCard := CopyToCompleteCard(*card)
+	completeCard := models.CopyToCompleteCard(*card)
 	completeCard.Assignments = make([]string, 0)
 	assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
 	if err != nil {
@@ -231,7 +232,7 @@ func (c *Controller) GetCompleteCardById(ctx context.Context, cardId string) (*C
 	return &completeCard, nil
 }
 
-func (c *Controller) CreateCardWithAI(ctx context.Context, panelId string) (*Card, error) {
+func (c *Controller) CreateCardWithAI(ctx context.Context, panelId string) (*models.Card, error) {
 
 	requestUrl := fmt.Sprintf("%s/ai/generate/card", c.cfg.AI.APIHost)
 	res, err := http.Get(requestUrl)
