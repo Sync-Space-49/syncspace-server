@@ -160,17 +160,6 @@ func (c *Controller) DeleteUserById(ctx context.Context, userId string) error {
 	return nil
 }
 
-func (c *Controller) GetUserOwnedOrganizationsById(ctx context.Context, userId string) (*[]models.Organization, error) {
-	var organizations []models.Organization
-	err := c.db.DB.SelectContext(ctx, &organizations, `
-		SELECT * FROM Organizations WHERE owner_id=$1;
-	`, userId)
-	if err != nil {
-		return nil, err
-	}
-	return &organizations, nil
-}
-
 func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string) (*[]models.Organization, error) {
 	usersRoles, err := auth.GetUserRoles(userId)
 	if err != nil {
@@ -211,6 +200,71 @@ func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string
 		return nil, err
 	}
 	return &organizations, nil
+}
+
+func (c *Controller) GetUserOwnedOrganizationsById(ctx context.Context, userId string) (*[]models.Organization, error) {
+	var organizations []models.Organization
+	err := c.db.DB.SelectContext(ctx, &organizations, `
+		SELECT * FROM Organizations WHERE owner_id=$1;
+	`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &organizations, nil
+}
+
+func (c *Controller) GetUserBoardsById(ctx context.Context, userId string) (*[]models.Board, error) {
+	usersRoles, err := auth.GetUserRoles(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var boardIds []string
+	findUUIDInRoleRegex := regexp.MustCompile(`org.*?:board(.*?):`)
+	for _, role := range *usersRoles {
+		matches := findUUIDInRoleRegex.FindStringSubmatch(role.Name)
+		print(matches)
+		if len(matches) < 2 {
+			continue
+		}
+		boardId := matches[1]
+		alreadyFound := false
+		for _, bId := range boardIds {
+			if bId == boardId {
+				alreadyFound = true
+				break
+			}
+		}
+		if !alreadyFound {
+			boardIds = append(boardIds, boardId)
+		}
+	}
+
+	if len(boardIds) == 0 {
+		return &[]models.Board{}, nil
+	}
+	query, args, err := sqlx.In(`SELECT * FROM Boards WHERE id IN (?)`, boardIds)
+	if err != nil {
+		return nil, err
+	}
+	query = c.db.DB.Rebind(query)
+	var boards []models.Board
+	err = c.db.DB.SelectContext(ctx, &boards, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return &boards, nil
+}
+
+func (c *Controller) GetUserOwnedBoardsById(ctx context.Context, userId string) (*[]models.Organization, error) {
+	var boards []models.Organization
+	err := c.db.DB.SelectContext(ctx, &boards, `
+		SELECT * FROM Boards WHERE owner_id=$1;
+	`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &boards, nil
 }
 
 func (c *Controller) GetUserAssignedCardsById(ctx context.Context, userId string) (*[]models.Card, error) {

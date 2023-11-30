@@ -37,8 +37,8 @@ func registerUserRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteUser))).Methods("DELETE")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}/organizations", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOrganizations))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}/organizations/owned", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOwnedOrganizations))).Methods("GET")
-	// handler.router.Handle(fmt.Sprintf("%s/{userId}/boards", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserBoard))).Methods("GET")
-	// handler.router.Handle(fmt.Sprintf("%s/{userId}/boards/owned", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOwnedBoard))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{userId}/boards", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserBoards))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{userId}/boards/owned", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOwnerBoards))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}/assigned", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserAssignedCards))).Methods("GET")
 
 	return handler.router
@@ -196,6 +196,50 @@ func (handler *userHandler) GetUserOwnedOrganizations(writer http.ResponseWriter
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(organizations)
+}
+
+func (handler *userHandler) GetUserBoards(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	userId := params["userId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	signedInUserId := token.RegisteredClaims.Subject
+	if signedInUserId != userId {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to get organizations for user with id %s", signedInUserId, userId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	cards, err := handler.controller.GetUserBoardsById(ctx, userId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get organizations for user with id %s: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(cards)
+}
+
+func (handler *userHandler) GetUserOwnerBoards(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	userId := params["userId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	signedInUserId := token.RegisteredClaims.Subject
+	if signedInUserId != userId {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to get organizations for user with id %s", signedInUserId, userId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	cards, err := handler.controller.GetUserOwnedBoardsById(ctx, userId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get organizations for user with id %s: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(cards)
 }
 
 func (handler *userHandler) GetUserAssignedCards(writer http.ResponseWriter, request *http.Request) {
