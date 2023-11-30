@@ -223,7 +223,6 @@ func (c *Controller) GetUserBoardsById(ctx context.Context, userId string) (*[]m
 	findUUIDInRoleRegex := regexp.MustCompile(`org.*?:board(.*?):`)
 	for _, role := range *usersRoles {
 		matches := findUUIDInRoleRegex.FindStringSubmatch(role.Name)
-		print(matches)
 		if len(matches) < 2 {
 			continue
 		}
@@ -256,8 +255,8 @@ func (c *Controller) GetUserBoardsById(ctx context.Context, userId string) (*[]m
 	return &boards, nil
 }
 
-func (c *Controller) GetUserOwnedBoardsById(ctx context.Context, userId string) (*[]models.Organization, error) {
-	var boards []models.Organization
+func (c *Controller) GetUserOwnedBoardsById(ctx context.Context, userId string) (*[]models.Board, error) {
+	var boards []models.Board
 	err := c.db.DB.SelectContext(ctx, &boards, `
 		SELECT * FROM Boards WHERE owner_id=$1;
 	`, userId)
@@ -270,9 +269,9 @@ func (c *Controller) GetUserOwnedBoardsById(ctx context.Context, userId string) 
 func (c *Controller) GetUserAssignedCardsById(ctx context.Context, userId string) (*[]models.Card, error) {
 	var cards []models.Card
 	err := c.db.DB.SelectContext(ctx, &cards, `
-		SELECT * FROM Cards c
-		LEFT JOIN Assigned_Cards ac ON c.id = ac.user_id
-		where ac.user_id = $1
+		SELECT c.* FROM Cards c
+		JOIN Assigned_Cards ac ON c.id = ac.card_id
+		WHERE ac.user_id = $1
 	`, userId)
 	if err != nil {
 		return nil, err
