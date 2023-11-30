@@ -3,8 +3,11 @@ package board
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 
 	"github.com/Sync-Space-49/syncspace-server/models"
+	"github.com/google/uuid"
 )
 
 func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]models.Card, error) {
@@ -18,22 +21,26 @@ func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]
 	return &cards, nil
 }
 
-func (c *Controller) CreateCard(ctx context.Context, title string, description string, stackId string) error {
+func (c *Controller) CreateCard(ctx context.Context, title string, description string, stackId string) (*models.Card, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Cards where stack_id=$1;
 	`, stackId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
+	cardId := uuid.New().String()
 	_, err = c.db.DB.ExecContext(ctx, `
-		INSERT INTO Cards (title, description, position, stack_id) VALUES ($1, $2, $3, $4);
-	`, title, description, nextPosition, stackId)
+		INSERT INTO Cards (id, title, description, position, stack_id) VALUES ($1, $2, $3, $4, $5);
+	`, cardId, title, description, nextPosition, stackId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	card, err := c.GetCardById(ctx, cardId)
+	if err != nil {
+		return nil, err
+	}
+	return card, nil
 }
 
 func (c *Controller) GetCardById(ctx context.Context, cardId string) (*models.Card, error) {
@@ -223,4 +230,33 @@ func (c *Controller) GetCompleteCardById(ctx context.Context, cardId string) (*m
 	}
 
 	return &completeCard, nil
+}
+
+func (c *Controller) CreateCardWithAI(ctx context.Context, panelId string) (*models.Card, error) {
+
+	requestUrl := fmt.Sprintf("%s/ai/generate/card", c.cfg.AI.APIHost)
+	res, err := http.Get(requestUrl)
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+	}
+	// json.Marshal(res)
+	// This prints the AI generated card JSON
+	fmt.Print(res)
+
+	// cardId := uuid.New().String()
+	// // title, description, panelId,
+	// // stackId = "AI Generated Cards"
+
+	// _, err := c.db.DB.ExecContext(ctx, `
+	// 	INSERT INTO Cards (id, title, description, stack_id) VALUES ($1, $2, $3, $4);
+	// `, cardId, title, description, panelId)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// card, err := c.GetCardById(ctx, cardId)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// return card, nil
+	return nil, nil
 }
