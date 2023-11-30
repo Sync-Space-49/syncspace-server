@@ -402,11 +402,8 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 			return nil, err
 		}
 		for _, task := range tasks {
-			// TODO: Update DB to use story points lol
-			// _, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints.(string), newStack.Id.String()
-			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, newStack.Id.String())
+			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints, newStack.Id.String())
 			if err != nil {
-				// handle the case where task.CardStoryPoints is not a string (or some other error occurred)
 				return nil, err
 			}
 		}

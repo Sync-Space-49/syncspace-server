@@ -22,6 +22,7 @@ type Card struct {
 	Id          uuid.UUID `db:"id" json:"id"`
 	Title       string    `db:"title" json:"title"`
 	Description string    `db:"description" json:"description"`
+	Points      int       `db:"points" json:"points"`
 	Position    int       `db:"position" json:"position"`
 	StackId     uuid.UUID `db:"stack_id" json:"stack_id"`
 }
@@ -78,16 +79,17 @@ type CompleteCard struct {
 	Id          uuid.UUID `db:"id" json:"id"`
 	Title       string    `db:"title" json:"title"`
 	Description string    `db:"description" json:"description"`
+	Points      int       `db:"points" json:"points"`
 	Position    int       `db:"position" json:"position"`
 	StackId     uuid.UUID `db:"stack_id" json:"stack_id"`
 	Assignments []string  `json:"assignments"`
 }
 
 type AIGeneratedCard struct {
-	AssignedUsers   []string    `json:"assigned"`
-	CardTitle       string      `json:"title"`
-	CardDesc        string      `json:"description"`
-	CardStoryPoints interface{} `json:"story_points"`
+	AssignedUsers   []string `json:"assigned"`
+	CardTitle       string   `json:"title"`
+	CardDesc        string   `json:"description"`
+	CardStoryPoints string   `json:"story_points"`
 }
 
 type AIGeneratedSprint map[string][]AIGeneratedCard
