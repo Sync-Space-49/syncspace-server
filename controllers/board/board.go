@@ -2,17 +2,24 @@ package board
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
 	"github.com/Sync-Space-49/syncspace-server/controllers/user"
+	"github.com/Sync-Space-49/syncspace-server/models"
 
 	"github.com/google/uuid"
 )
 
-func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, tokenCustomClaims *auth.CustomClaims, orgId string, userId string) (*[]Board, error) {
-	orgBoards := make([]Board, 0)
+func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, tokenCustomClaims *auth.CustomClaims, orgId string, userId string) (*[]models.Board, error) {
+	orgBoards := make([]models.Board, 0)
 	err := c.db.DB.SelectContext(ctx, &orgBoards, `
 		SELECT * FROM Boards WHERE organization_id=$1;
 	`, orgId)
@@ -21,7 +28,7 @@ func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, tokenCustomClai
 	}
 
 	orgPrefix := fmt.Sprintf("org%s", orgId)
-	var viewableBoards []Board
+	var viewableBoards []models.Board
 	for _, board := range orgBoards {
 		if board.IsPrivate {
 			readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, board.Id)
@@ -36,8 +43,8 @@ func (c *Controller) GetViewableBoardsInOrg(ctx context.Context, tokenCustomClai
 	return &viewableBoards, nil
 }
 
-func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, error) {
-	var board Board
+func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*models.Board, error) {
+	var board models.Board
 	err := c.db.DB.GetContext(ctx, &board, `
 		SELECT * FROM Boards WHERE id=$1;
 	`, boardId)
@@ -47,46 +54,66 @@ func (c *Controller) GetBoardById(ctx context.Context, boardId string) (*Board, 
 	return &board, nil
 }
 
-func (c *Controller) GetCompleteBoardById(ctx context.Context, boardId string) (*CompleteBoard, error) {
+func (c *Controller) GetCompleteBoardById(ctx context.Context, boardId string) (*models.CompleteBoard, error) {
 	board, err := c.GetBoardById(ctx, boardId)
 	if err != nil {
 		return nil, err
 	}
-	completeBoard := CopyToCompleteBoard(*board)
+	completeBoard := models.CopyToCompleteBoard(*board)
 	panels, err := c.GetPanelsByBoardId(ctx, boardId)
 	if err != nil {
 		return nil, err
 	}
 	if len(*panels) > 0 {
 		for _, panel := range *panels {
-			completePanel := CopyToCompletePanel(panel)
-			completePanel.Stacks = make([]CompleteStack, 0)
+			completePanel := models.CopyToCompletePanel(panel)
+			completePanel.Stacks = make([]models.CompleteStack, 0)
 			stacks, err := c.GetStacksByPanelId(ctx, panel.Id.String())
 			if err != nil {
 				return nil, err
 			}
 			if len(*stacks) > 0 {
 				for _, stack := range *stacks {
-					completeStack := CopyToCompleteStack(stack)
+					completeStack := models.CopyToCompleteStack(stack)
+					completeStack.Cards = make([]models.CompleteCard, 0)
 					cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
 					if err != nil {
 						return nil, err
 					}
-					completeStack.Cards = *cards
+					if len(*cards) > 0 {
+						for _, card := range *cards {
+							completeCard := models.CopyToCompleteCard(card)
+							completeCard.Assignments = make([]string, 0)
+							assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
+							if err != nil {
+								return nil, err
+							}
+							if len(*assignments) > 0 {
+								for _, assignment := range *assignments {
+									completeCard.Assignments = append(completeCard.Assignments, assignment)
+								}
+							} else {
+								completeCard.Assignments = make([]string, 0)
+							}
+							completeStack.Cards = append(completeStack.Cards, completeCard)
+						}
+					} else {
+						completeStack.Cards = make([]models.CompleteCard, 0)
+					}
 					completePanel.Stacks = append(completePanel.Stacks, completeStack)
 				}
 			} else {
-				completePanel.Stacks = make([]CompleteStack, 0)
+				completePanel.Stacks = make([]models.CompleteStack, 0)
 			}
 			completeBoard.Panels = append(completeBoard.Panels, completePanel)
 		}
 	} else {
-		completeBoard.Panels = make([]CompletePanel, 0)
+		completeBoard.Panels = make([]models.CompletePanel, 0)
 	}
 	return &completeBoard, nil
 }
 
-func (c *Controller) CreateBoard(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*Board, error) {
+func (c *Controller) CreateBoard(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*models.Board, error) {
 	query := `INSERT INTO Boards (id, title, is_private, organization_id, owner_id) VALUES ($1, $2, $3, $4, $5);`
 	boardId := uuid.New().String()
 	_, err := c.db.DB.ExecContext(ctx, query, boardId, name, isPrivate, orgId, userId)
@@ -263,7 +290,7 @@ func (c *Controller) DeleteBoardById(ctx context.Context, boardId string) error 
 	return nil
 }
 
-func (c *Controller) GetMembersByBoardId(boardId string) (*[]user.User, error) {
+func (c *Controller) GetMembersByBoardId(boardId string) (*[]models.User, error) {
 	boardMemberRoleName := fmt.Sprintf("board%s:member", boardId)
 	roles, err := auth.GetRoles(&boardMemberRoleName)
 	if err != nil {
@@ -310,4 +337,89 @@ func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId 
 		return err
 	}
 	return nil
+}
+
+func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name string, description string, isPrivate bool, orgId string, detailLevel string, storyPointType string, storyPointExamples string) (*models.Board, error) {
+	requestUrl := fmt.Sprintf("http://%s/api/generate/board", c.cfg.AI.APIHost)
+	formData := url.Values{}
+	formData.Add("title", name)
+	formData.Add("description", description)
+
+	if detailLevel == "" {
+		formData.Add("detail_level", "very detailed")
+	} else {
+		formData.Add("detail_level", detailLevel)
+	}
+	if storyPointType == "" {
+		formData.Add("story_point_type", "T-Shirt Sizes")
+	} else {
+		formData.Add("story_point_type", storyPointType)
+	}
+	if storyPointExamples == "" {
+		formData.Add("story_points", "S, M, L, XL")
+	} else {
+		formData.Add("story_points", storyPointExamples)
+	}
+
+	req, err := http.NewRequest("POST", requestUrl, strings.NewReader(formData.Encode()))
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/form-data")
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("Error occurred during making request. %v", err)
+		return nil, err
+	}
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Fatalf("Error occurred during conversion of HTTP resonse body into bytes. %v", err)
+		return nil, err
+	}
+
+	var sprints map[string][]models.AIGeneratedCard
+	err = json.Unmarshal(data, &sprints)
+	if err != nil {
+		log.Fatalf("Error occurred during unmarshalling. %v", err)
+		return nil, err
+	}
+	newBoard, err := c.CreateBoard(ctx, userId, name, isPrivate, orgId)
+	if err != nil {
+		return nil, err
+	}
+	boardId := newBoard.Id.String()
+
+	for sprint, tasks := range sprints {
+		newPanel, err := c.CreatePanel(ctx, sprint, boardId)
+		if err != nil {
+			return nil, err
+		}
+		panelId := newPanel.Id.String()
+		newStack, err := c.CreateStack(ctx, "To-Do", panelId)
+		if err != nil {
+			return nil, err
+		}
+		for _, task := range tasks {
+			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints, newStack.Id.String())
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return newBoard, nil
+}
+
+func (c *Controller) CanUseAIForBoardCreation(ctx context.Context, orgId string) (bool, error) {
+	var ai_enabled bool
+
+	err := c.db.DB.GetContext(ctx, &ai_enabled, `
+		SELECT ai_enabled FROM Organizations WHERE id=$1;
+	`, orgId)
+	if err != nil {
+		return false, err
+	}
+	return ai_enabled, nil
 }

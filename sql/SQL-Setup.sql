@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS Cards (
     id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title           VARCHAR(255) NOT NULL,
     description     TEXT,
+    points          VARCHAR(30) NOT NULL DEFAULT 0;
     position        SMALLINT,
     stack_id        UUID, FOREIGN KEY (stack_id) REFERENCES Stacks(id) ON DELETE CASCADE
 );

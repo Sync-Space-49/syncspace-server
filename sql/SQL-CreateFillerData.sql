@@ -51,10 +51,10 @@ INSERT INTO Stacks(id, title, position, panel_id) VALUES
     ('fe031a7e-7529-48a2-b674-0447b8e5844f', 'Lorem Ipsum 2: Electric Boogaloo', 2, '69639276-a0bb-4a9c-b0b8-9b66b7aaaf31'),
     ('f4d08871-f86b-4716-bc91-1807ab5efabd', 'Lorem Ipsum 3: Return of the Ipsum', 3, '69639276-a0bb-4a9c-b0b8-9b66b7aaaf31');
 
-INSERT INTO Cards(id, title, description, position, stack_id) VALUES
-    ('f2785b0b-333a-4cfa-abbc-a668246cebcf', 'Testing Card', 'A filler card created for demo', 1, '865be2f9-2025-4a4a-a62f-96509092bea2'),
-    ('6f45243d-dd8b-4494-ae6e-96a50cc3dcbf', 'Testing Card', 'A filler card created for demo', 2, '865be2f9-2025-4a4a-a62f-96509092bea2'),
-    ('4ae5b20d-289f-4a76-9777-2ec727be8379', 'Testing Card', 'A filler card created for demo', 3, '865be2f9-2025-4a4a-a62f-96509092bea2'),
-    ('78c0bc19-cd2c-48df-9a6c-6a6f6f1479c4', 'Testing Card', 'A filler card created for demo', 4, '865be2f9-2025-4a4a-a62f-96509092bea2'),
-    ('61969f1a-0c32-4c6a-9372-1c87c7f9c196', 'Testing Card', 'A filler card created for demo', 5, '865be2f9-2025-4a4a-a62f-96509092bea2'),
-    ('b73e47ba-61ed-4ee6-8806-c95b0d48e7e2', 'Testing Card', 'A filler card created for demo', 6, '865be2f9-2025-4a4a-a62f-96509092bea2');
+INSERT INTO Cards(id, title, description, points, position, stack_id) VALUES
+    ('f2785b0b-333a-4cfa-abbc-a668246cebcf', 'Testing Card', 'A filler card created for demo', 'XL', 1, '865be2f9-2025-4a4a-a62f-96509092bea2'),
+    ('6f45243d-dd8b-4494-ae6e-96a50cc3dcbf', 'Testing Card', 'A filler card created for demo', 'XS', 2, '865be2f9-2025-4a4a-a62f-96509092bea2'),
+    ('4ae5b20d-289f-4a76-9777-2ec727be8379', 'Testing Card', 'A filler card created for demo', 'L', 3, '865be2f9-2025-4a4a-a62f-96509092bea2'),
+    ('78c0bc19-cd2c-48df-9a6c-6a6f6f1479c4', 'Testing Card', 'A filler card created for demo', 'M', 4, '865be2f9-2025-4a4a-a62f-96509092bea2'),
+    ('61969f1a-0c32-4c6a-9372-1c87c7f9c196', 'Testing Card', 'A filler card created for demo', 'M', 5, '865be2f9-2025-4a4a-a62f-96509092bea2'),
+    ('b73e47ba-61ed-4ee6-8806-c95b0d48e7e2', 'Testing Card', 'A filler card created for demo', 'S', 6, '865be2f9-2025-4a4a-a62f-96509092bea2');

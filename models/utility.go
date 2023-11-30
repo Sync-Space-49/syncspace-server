@@ -1,4 +1,4 @@
-package board
+package models
 
 func CopyToCompleteBoard(source Board) CompleteBoard {
 	dest := CompleteBoard{}
@@ -26,5 +26,15 @@ func CopyToCompleteStack(source Stack) CompleteStack {
 	dest.Title = source.Title
 	dest.Position = source.Position
 	dest.PanelId = source.PanelId
+	return dest
+}
+
+func CopyToCompleteCard(source Card) CompleteCard {
+	dest := CompleteCard{}
+	dest.Id = source.Id
+	dest.Title = source.Title
+	dest.Description = source.Description
+	dest.Position = source.Position
+	dest.StackId = source.StackId
 	return dest
 }

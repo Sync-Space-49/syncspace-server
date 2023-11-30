@@ -10,14 +10,43 @@ import (
 	"strings"
 
 	"github.com/Sync-Space-49/syncspace-server/auth"
-	"github.com/Sync-Space-49/syncspace-server/controllers/organization"
+	"github.com/Sync-Space-49/syncspace-server/models"
 	"github.com/jmoiron/sqlx"
 )
 
-func (c *Controller) GetUserById(userId string) (*User, error) {
+func (c *Controller) GetUsers() (*[]models.User, error) {
 	managementToken, err := auth.GetManagementToken()
 	if err != nil {
-		return &User{}, err
+		return &[]models.User{}, err
+	}
+	method := "GET"
+	url := fmt.Sprintf("%sapi/v2/users", c.cfg.Auth0.Domain)
+	req, _ := http.NewRequest(method, url, nil)
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return &[]models.User{}, err
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return &[]models.User{}, fmt.Errorf("invalid request: %s", string(body))
+	}
+
+	var users []models.User
+	err = json.Unmarshal(body, &users)
+	if err != nil {
+		return &[]models.User{}, err
+	}
+
+	return &users, nil
+}
+
+func (c *Controller) GetUserById(userId string) (*models.User, error) {
+	managementToken, err := auth.GetManagementToken()
+	if err != nil {
+		return &models.User{}, err
 	}
 	method := "GET"
 	url := fmt.Sprintf("%sapi/v2/users/%s", c.cfg.Auth0.Domain, userId)
@@ -26,18 +55,18 @@ func (c *Controller) GetUserById(userId string) (*User, error) {
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return &User{}, err
+		return &models.User{}, err
 	}
 	defer res.Body.Close()
 	body, _ := io.ReadAll(res.Body)
 	if res.StatusCode != http.StatusOK {
-		return &User{}, fmt.Errorf("invalid request: %s", string(body))
+		return &models.User{}, fmt.Errorf("invalid request: %s", string(body))
 	}
 
-	var user User
+	var user models.User
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		return &User{}, err
+		return &models.User{}, err
 	}
 
 	return &user, nil
@@ -120,7 +149,7 @@ func (c *Controller) UpdateUserById(userId string, email string, username string
 	return nil
 }
 
-func (c *Controller) DeleteUserById(userId string) error {
+func (c *Controller) DeleteUserById(ctx context.Context, userId string) error {
 	managementToken, err := auth.GetManagementToken()
 	if err != nil {
 		return err
@@ -144,10 +173,23 @@ func (c *Controller) DeleteUserById(userId string) error {
 		return fmt.Errorf("failed to delete user: %s", string(body))
 	}
 
+	_, err = c.db.DB.ExecContext(ctx, `DELETE FROM Organizations WHERE owner_id=$1`, userId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `DELETE FROM Boards WHERE owner_id=$1`, userId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `DELETE FROM Assigned_Cards WHERE user_id=$1`, userId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string) (*[]organization.Organization, error) {
+func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string) (*[]models.Organization, error) {
 	usersRoles, err := auth.GetUserRoles(userId)
 	if err != nil {
 		return nil, err
@@ -174,17 +216,94 @@ func (c *Controller) GetUserOrganizationsById(ctx context.Context, userId string
 	}
 
 	if len(orgIds) == 0 {
-		return &[]organization.Organization{}, nil
+		return &[]models.Organization{}, nil
 	}
 	query, args, err := sqlx.In(`SELECT * FROM Organizations WHERE id IN (?)`, orgIds)
 	if err != nil {
 		return nil, err
 	}
 	query = c.db.DB.Rebind(query)
-	var organizations []organization.Organization
+	var organizations []models.Organization
 	err = c.db.DB.SelectContext(ctx, &organizations, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	return &organizations, nil
+}
+
+func (c *Controller) GetUserOwnedOrganizationsById(ctx context.Context, userId string) (*[]models.Organization, error) {
+	var organizations []models.Organization
+	err := c.db.DB.SelectContext(ctx, &organizations, `
+		SELECT * FROM Organizations WHERE owner_id=$1;
+	`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &organizations, nil
+}
+
+func (c *Controller) GetUserBoardsById(ctx context.Context, userId string) (*[]models.Board, error) {
+	usersRoles, err := auth.GetUserRoles(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var boardIds []string
+	findUUIDInRoleRegex := regexp.MustCompile(`org.*?:board(.*?):`)
+	for _, role := range *usersRoles {
+		matches := findUUIDInRoleRegex.FindStringSubmatch(role.Name)
+		if len(matches) < 2 {
+			continue
+		}
+		boardId := matches[1]
+		alreadyFound := false
+		for _, bId := range boardIds {
+			if bId == boardId {
+				alreadyFound = true
+				break
+			}
+		}
+		if !alreadyFound {
+			boardIds = append(boardIds, boardId)
+		}
+	}
+
+	if len(boardIds) == 0 {
+		return &[]models.Board{}, nil
+	}
+	query, args, err := sqlx.In(`SELECT * FROM Boards WHERE id IN (?)`, boardIds)
+	if err != nil {
+		return nil, err
+	}
+	query = c.db.DB.Rebind(query)
+	var boards []models.Board
+	err = c.db.DB.SelectContext(ctx, &boards, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return &boards, nil
+}
+
+func (c *Controller) GetUserOwnedBoardsById(ctx context.Context, userId string) (*[]models.Board, error) {
+	var boards []models.Board
+	err := c.db.DB.SelectContext(ctx, &boards, `
+		SELECT * FROM Boards WHERE owner_id=$1;
+	`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &boards, nil
+}
+
+func (c *Controller) GetUserAssignedCardsById(ctx context.Context, userId string) (*[]models.Card, error) {
+	var cards []models.Card
+	err := c.db.DB.SelectContext(ctx, &cards, `
+		SELECT c.* FROM Cards c
+		JOIN Assigned_Cards ac ON c.id = ac.card_id
+		WHERE ac.user_id = $1
+	`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &cards, nil
 }

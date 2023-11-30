@@ -75,6 +75,12 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE")
 
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllAssignedUsers))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AssignCardToUser))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UnassignCardFromUser))).Methods("DELETE")
+
+	handler.router.Handle(fmt.Sprintf("%s/ai", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoardWithAI))).Methods("POST")
+
 	return handler.router
 }
 
@@ -126,7 +132,7 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
 	userId := token.RegisteredClaims.Subject
 	orgPrefix := fmt.Sprintf("org%s", orgId)
-	createBoardsPerm := fmt.Sprintf("%s:create_board", orgPrefix)
+	createBoardsPerm := fmt.Sprintf("%s:create_boards", orgPrefix)
 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
 	canCreateBoards := tokenCustomClaims.HasAnyPermissions(createBoardsPerm, boardsAdminPerm)
 	if !canCreateBoards {
@@ -148,6 +154,7 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(board)
 }
 
 func (handler *boardHandler) GetBoard(writer http.ResponseWriter, request *http.Request) {
@@ -487,13 +494,14 @@ func (handler *boardHandler) CreatePanel(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	err := handler.controller.CreatePanel(request.Context(), title, boardId)
+	panel, err := handler.controller.CreatePanel(request.Context(), title, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create panel: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(panel)
 }
 
 func (handler *boardHandler) GetPanel(writer http.ResponseWriter, request *http.Request) {
@@ -742,13 +750,14 @@ func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	err := handler.controller.CreateStack(request.Context(), title, panelId)
+	stack, err := handler.controller.CreateStack(request.Context(), title, panelId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create stack: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(stack)
 }
 
 func (handler *boardHandler) GetStack(writer http.ResponseWriter, request *http.Request) {
@@ -983,6 +992,7 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 	description := request.FormValue("description")
+	points := request.FormValue("points")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -1002,13 +1012,14 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	err := handler.controller.CreateCard(request.Context(), title, description, stackId)
+	card, err := handler.controller.CreateCard(request.Context(), title, description, points, stackId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(card)
 }
 
 func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.Request) {
@@ -1073,6 +1084,7 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 
 	title := request.FormValue("title")
 	description := request.FormValue("description")
+	points := request.FormValue("points")
 	var position *int
 	if request.FormValue("position") != "" {
 		var err error
@@ -1098,7 +1110,7 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 	}
 
 	ctx := request.Context()
-	err := handler.controller.UpdateCardById(ctx, boardId, stackId, cardId, newStackId, title, description, position)
+	err := handler.controller.UpdateCardById(ctx, boardId, stackId, cardId, newStackId, title, description, points, position)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
 		return
@@ -1136,34 +1148,191 @@ func (handler *boardHandler) DeleteCard(writer http.ResponseWriter, request *htt
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-// func (handler *boardHandler) GetAssignedCards(writer http.ResponseWriter, request *http.Request) {
-
-// }
-
 // func (handler *boardHandler) GetAllAssignedCards(writer http.ResponseWriter, request *http.Request) {
+// 	// For now, this method only works on yourself.
 
+// 	params := mux.Vars(request)
+// 	organizationId := params["organizationId"]
+// 	boardId := params["boardId"]
+// 	// stackId := params["stackId"]
+// 	// cardId := params["cardId"]
+// 	memberId := params["userId"]
+
+// 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+// 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+// 	userId := token.RegisteredClaims.Subject
+// 	orgPrefix := fmt.Sprintf("org%s", organizationId)
+// 	readCardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
+// 	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+// 	canReadCard := tokenCustomClaims.HasAnyPermissions(readCardPerm, boardsAdminPerm)
+// 	if !canReadCard {
+// 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read cards on board with id: %s", userId, boardId), http.StatusForbidden)
+// 		return
+// 	}
+
+// 	ctx := request.Context()
+// 	cards, err := handler.controller.GetAssignedCardsByUserId(ctx, memberId)
+// 	if err != nil {
+// 		http.Error(writer, fmt.Sprintf("Failed to get assigned cards for user with id %s: %s", memberId, err.Error()), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	writer.Header().Set("Content-Type", "application/json")
+// 	writer.WriteHeader(http.StatusOK)
+// 	json.NewEncoder(writer).Encode(cards)
 // }
 
-// func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, request *http.Request) {
+func (handler *boardHandler) GetAllAssignedUsers(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	// stackId := params["stackId"]
+	cardId := params["cardId"]
+	// memberId := params["memberId"]
 
-// }
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	readCardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
+	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+	canReadCard := tokenCustomClaims.HasAnyPermissions(readCardPerm, boardsAdminPerm)
+	if !canReadCard {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
+		return
+	}
 
-// func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, request *http.Request) {
+	ctx := request.Context()
+	cards, err := handler.controller.GetAssignedUsersByCardId(ctx, cardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get assigned users for card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if cards == nil {
+		cards = &[]string{}
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(cards)
+}
 
-// }
+func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	// stackId := params["stackId"]
+	cardId := params["cardId"]
 
-// func (handler *boardHandler) CreateTag(writer http.ResponseWriter, request *http.Request) {
+	memberId := request.FormValue("user_id")
 
-// }
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	updateCardPerm := fmt.Sprintf("%s:board%s:update", orgPrefix, boardId)
+	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+	canUpdateCard := tokenCustomClaims.HasAnyPermissions(updateCardPerm, boardsAdminPerm)
+	if !canUpdateCard {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
+		return
+	}
 
-// func (handler *boardHandler) DeleteTag(writer http.ResponseWriter, request *http.Request) {
+	ctx := request.Context()
+	err := handler.controller.AssignCardToUser(ctx, cardId, memberId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to assign card with id %s to user with id %s: %s", cardId, memberId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
+}
 
-// }
+func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	// stackId := params["stackId"]
+	cardId := params["cardId"]
 
-// func (handler *boardHandler) AddTagToCard(writer http.ResponseWriter, request *http.Request) {
+	memberId := request.FormValue("user_id")
 
-// }
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	updateCardPerm := fmt.Sprintf("%s:board%s:update", orgPrefix, boardId)
+	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+	canUpdateCard := tokenCustomClaims.HasAnyPermissions(updateCardPerm, boardsAdminPerm)
+	if !canUpdateCard {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to update card %s on board with id: %s", userId, cardId, boardId), http.StatusForbidden)
+		return
+	}
 
-// func (handler *boardHandler) RemoveTagFromCard(writer http.ResponseWriter, request *http.Request) {
+	ctx := request.Context()
+	err := handler.controller.UnassignCardFromUser(ctx, cardId, memberId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to unassign card with id %s to user with id %s: %s", cardId, memberId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusNoContent)
+}
 
-// }
+func (handler *boardHandler) CreateBoardWithAI(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	title := request.FormValue("title")
+	description := request.FormValue("description")
+
+	detailLevel := request.FormValue("detailLevel")
+	storyPointType := request.FormValue("storyPointType")
+	storyPointExamples := request.FormValue("storyPointExamples")
+
+	if title == "" {
+		http.Error(writer, "No Title Found", http.StatusBadRequest)
+		return
+	}
+	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// Check if AI is enabled
+	aiEnabled, err := handler.controller.CanUseAIForBoardCreation(request.Context(), organizationId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to check if AI is enabled: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !aiEnabled {
+		http.Error(writer, fmt.Sprintf("AI is not enabled for organization with id %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	createBoardsPerm := fmt.Sprintf("%s:create_boards", orgPrefix)
+	boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+	canCreateBoards := tokenCustomClaims.HasAnyPermissions(createBoardsPerm, boardsAdminPerm)
+	if !canCreateBoards {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to create board in org with id: %s", token.RegisteredClaims.Subject, organizationId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	board, err := handler.controller.CreateBoardWithAI(ctx, userId, title, description, isPrivate, organizationId, detailLevel, storyPointType, storyPointExamples)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create board: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	err = handler.controller.InitializeBoard(userId, board.Id.String(), organizationId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to initialize board: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(board)
+}

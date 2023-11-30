@@ -3,10 +3,13 @@ package board
 import (
 	"context"
 	"errors"
+
+	"github.com/Sync-Space-49/syncspace-server/models"
+	"github.com/google/uuid"
 )
 
-func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]Panel, error) {
-	panels := make([]Panel, 0)
+func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[]models.Panel, error) {
+	panels := make([]models.Panel, 0)
 	err := c.db.DB.SelectContext(ctx, &panels, `
 		SELECT * FROM Panels WHERE board_id=$1 ORDER BY position ASC;
 	`, boardId)
@@ -16,27 +19,30 @@ func (c *Controller) GetPanelsByBoardId(ctx context.Context, boardId string) (*[
 	return &panels, nil
 }
 
-func (c *Controller) CreatePanel(ctx context.Context, title string, boardId string) error {
+func (c *Controller) CreatePanel(ctx context.Context, title string, boardId string) (*models.Panel, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Panels where board_id=$1;
 	`, boardId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
+	panelId := uuid.New().String()
 	_, err = c.db.DB.ExecContext(ctx, `
-		INSERT INTO Panels (title, position, board_id) VALUES ($1, $2, $3);
-	`, title, nextPosition, boardId)
+		INSERT INTO Panels (id, title, position, board_id) VALUES ($1, $2, $3, $4);
+	`, panelId, title, nextPosition, boardId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return nil
+	panel, err := c.GetPanelById(ctx, panelId)
+	if err != nil {
+		return nil, err
+	}
+	return panel, nil
 }
 
-func (c *Controller) GetPanelById(ctx context.Context, panelId string) (*Panel, error) {
-	var panel Panel
+func (c *Controller) GetPanelById(ctx context.Context, panelId string) (*models.Panel, error) {
+	var panel models.Panel
 	err := c.db.DB.GetContext(ctx, &panel, `
 		SELECT * FROM Panels WHERE id=$1;
 	`, panelId)
@@ -113,29 +119,49 @@ func (c *Controller) DeletePanelById(ctx context.Context, boardId string, panelI
 	return nil
 }
 
-func (c *Controller) GetCompletePanelById(ctx context.Context, panelId string) (*CompletePanel, error) {
+func (c *Controller) GetCompletePanelById(ctx context.Context, panelId string) (*models.CompletePanel, error) {
 	panel, err := c.GetPanelById(ctx, panelId)
 	if err != nil {
 		return nil, err
 	}
-	completePanel := CopyToCompletePanel(*panel)
-	completePanel.Stacks = make([]CompleteStack, 0)
+	completePanel := models.CopyToCompletePanel(*panel)
+	completePanel.Stacks = make([]models.CompleteStack, 0)
 	stacks, err := c.GetStacksByPanelId(ctx, panel.Id.String())
 	if err != nil {
 		return nil, err
 	}
 	if len(*stacks) > 0 {
 		for _, stack := range *stacks {
-			completeStack := CopyToCompleteStack(stack)
+			completeStack := models.CopyToCompleteStack(stack)
+			completeStack.Cards = make([]models.CompleteCard, 0)
 			cards, err := c.GetCardsByStackId(ctx, stack.Id.String())
 			if err != nil {
 				return nil, err
 			}
-			completeStack.Cards = *cards
+			if len(*cards) > 0 {
+				for _, card := range *cards {
+					completeCard := models.CopyToCompleteCard(card)
+					completeCard.Assignments = make([]string, 0)
+					assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
+					if err != nil {
+						return nil, err
+					}
+					if len(*assignments) > 0 {
+						for _, assignment := range *assignments {
+							completeCard.Assignments = append(completeCard.Assignments, assignment)
+						}
+					} else {
+						completeCard.Assignments = make([]string, 0)
+					}
+					completeStack.Cards = append(completeStack.Cards, completeCard)
+				}
+			} else {
+				completeStack.Cards = make([]models.CompleteCard, 0)
+			}
 			completePanel.Stacks = append(completePanel.Stacks, completeStack)
 		}
 	} else {
-		completePanel.Stacks = make([]CompleteStack, 0)
+		completePanel.Stacks = make([]models.CompleteStack, 0)
 	}
 	return &completePanel, nil
 }
