@@ -14,6 +14,35 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+func (c *Controller) GetUsers() (*[]models.User, error) {
+	managementToken, err := auth.GetManagementToken()
+	if err != nil {
+		return &[]models.User{}, err
+	}
+	method := "GET"
+	url := fmt.Sprintf("%sapi/v2/users", c.cfg.Auth0.Domain)
+	req, _ := http.NewRequest(method, url, nil)
+	req.Header.Add("Authorization", fmt.Sprintf("BEARER %s", managementToken))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return &[]models.User{}, err
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return &[]models.User{}, fmt.Errorf("invalid request: %s", string(body))
+	}
+
+	var users []models.User
+	err = json.Unmarshal(body, &users)
+	if err != nil {
+		return &[]models.User{}, err
+	}
+
+	return &users, nil
+}
+
 func (c *Controller) GetUserById(userId string) (*models.User, error) {
 	managementToken, err := auth.GetManagementToken()
 	if err != nil {
