@@ -992,6 +992,7 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 	description := request.FormValue("description")
+	points := request.FormValue("points")
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
@@ -1011,7 +1012,7 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	card, err := handler.controller.CreateCard(request.Context(), title, description, stackId)
+	card, err := handler.controller.CreateCard(request.Context(), title, description, points, stackId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -1083,6 +1084,7 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 
 	title := request.FormValue("title")
 	description := request.FormValue("description")
+	points := request.FormValue("points")
 	var position *int
 	if request.FormValue("position") != "" {
 		var err error
@@ -1108,7 +1110,7 @@ func (handler *boardHandler) UpdateCard(writer http.ResponseWriter, request *htt
 	}
 
 	ctx := request.Context()
-	err := handler.controller.UpdateCardById(ctx, boardId, stackId, cardId, newStackId, title, description, position)
+	err := handler.controller.UpdateCardById(ctx, boardId, stackId, cardId, newStackId, title, description, points, position)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
 		return

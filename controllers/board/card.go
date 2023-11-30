@@ -21,7 +21,7 @@ func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]
 	return &cards, nil
 }
 
-func (c *Controller) CreateCard(ctx context.Context, title string, description string, stackId string) (*models.Card, error) {
+func (c *Controller) CreateCard(ctx context.Context, title string, description string, points string, stackId string) (*models.Card, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Cards where stack_id=$1;
@@ -31,8 +31,8 @@ func (c *Controller) CreateCard(ctx context.Context, title string, description s
 	}
 	cardId := uuid.New().String()
 	_, err = c.db.DB.ExecContext(ctx, `
-		INSERT INTO Cards (id, title, description, position, stack_id) VALUES ($1, $2, $3, $4, $5);
-	`, cardId, title, description, nextPosition, stackId)
+		INSERT INTO Cards (id, title, description, points, position, stack_id) VALUES ($1, $2, $3, $4, $5, $6);
+	`, cardId, title, description, points, nextPosition, stackId)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (c *Controller) GetCardById(ctx context.Context, cardId string) (*models.Ca
 	return &card, nil
 }
 
-func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId string, cardId string, newStackId string, title string, description string, position *int) error {
+func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId string, cardId string, newStackId string, title string, description string, points string, position *int) error {
 	card, err := c.GetCardById(ctx, cardId)
 	if err != nil {
 		return err
@@ -126,8 +126,8 @@ func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId
 		}
 	}
 	_, err = c.db.DB.ExecContext(ctx, `
-		UPDATE Cards SET title=$1, description=$2, position=$3, stack_id=$4 WHERE id=$5;
-	`, title, description, *position, newStackId, cardId)
+		UPDATE Cards SET title=$1, description=$2, points=$3, position=$4, stack_id=$5 WHERE id=$6;
+	`, title, description, points, *position, newStackId, cardId)
 	if err != nil {
 		return err
 	}
