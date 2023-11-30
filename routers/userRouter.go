@@ -32,7 +32,7 @@ func registerUserRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 		controller: user.NewController(cfg, db),
 	}
 
-	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUser))).Methods("GET")
+	handler.router.Handle(usersPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllUsers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateUser))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteUser))).Methods("DELETE")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}/organizations", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOrganizations))).Methods("GET")
@@ -42,6 +42,18 @@ func registerUserRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 	handler.router.Handle(fmt.Sprintf("%s/{userId}/assigned", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserAssignedCards))).Methods("GET")
 
 	return handler.router
+}
+
+func (handler *userHandler) GetAllUsers(writer http.ResponseWriter, request *http.Request) {
+	users, err := handler.controller.GetUsers()
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get users: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(users)
 }
 
 func (handler *userHandler) GetUser(writer http.ResponseWriter, request *http.Request) {
