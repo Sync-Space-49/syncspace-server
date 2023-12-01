@@ -22,11 +22,7 @@ type Card struct {
 	Id          uuid.UUID `db:"id" json:"id"`
 	Title       string    `db:"title" json:"title"`
 	Description string    `db:"description" json:"description"`
-<<<<<<< HEAD
 	Points      string    `db:"points" json:"points"`
-=======
-	Points      int       `db:"points" json:"points"`
->>>>>>> main
 	Position    int       `db:"position" json:"position"`
 	StackId     uuid.UUID `db:"stack_id" json:"stack_id"`
 }
@@ -83,7 +79,7 @@ type CompleteCard struct {
 	Id          uuid.UUID `db:"id" json:"id"`
 	Title       string    `db:"title" json:"title"`
 	Description string    `db:"description" json:"description"`
-	Points      string       `db:"points" json:"points"`
+	Points      string    `db:"points" json:"points"`
 	Position    int       `db:"position" json:"position"`
 	StackId     uuid.UUID `db:"stack_id" json:"stack_id"`
 	Assignments []string  `json:"assignments"`
