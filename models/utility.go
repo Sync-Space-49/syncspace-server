@@ -34,6 +34,7 @@ func CopyToCompleteCard(source Card) CompleteCard {
 	dest.Id = source.Id
 	dest.Title = source.Title
 	dest.Description = source.Description
+	dest.Points = source.Points
 	dest.Position = source.Position
 	dest.StackId = source.StackId
 	return dest
