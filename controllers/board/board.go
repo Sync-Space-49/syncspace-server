@@ -402,7 +402,8 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 			return nil, err
 		}
 		for _, task := range tasks {
-			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, task.CardStoryPoints.(string), newStack.Id.String())
+			CardStoryPointsString := fmt.Sprintf("%v", task.CardStoryPoints)
+			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, CardStoryPointsString, newStack.Id.String())
 			if err != nil {
 				return nil, err
 			}
