@@ -86,10 +86,10 @@ type CompleteCard struct {
 }
 
 type AIGeneratedCard struct {
-	AssignedUsers   []string `json:"assigned"`
-	CardTitle       string   `json:"title"`
-	CardDesc        string   `json:"description"`
-	CardStoryPoints string   `json:"story_points"`
+	AssignedUsers   []string    `json:"assigned"`
+	CardTitle       string      `json:"title"`
+	CardDesc        string      `json:"description"`
+	CardStoryPoints interface{} `json:"story_points"`
 }
 
 type AIGeneratedSprint map[string][]AIGeneratedCard
