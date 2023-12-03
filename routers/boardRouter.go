@@ -79,7 +79,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllAssignedUsers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AssignCardToUser))).Methods("POST")
-	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UnassignCardFromUser))).Methods("DELETE")
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned/{memberId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UnassignCardFromUser))).Methods("DELETE")
 
 	return handler.router
 }
@@ -1283,8 +1283,7 @@ func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, re
 	boardId := params["boardId"]
 	// stackId := params["stackId"]
 	cardId := params["cardId"]
-
-	memberId := request.FormValue("user_id")
+	memberId := params["memberId"]
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
