@@ -38,6 +38,10 @@ func (c *Controller) CreatePanel(ctx context.Context, title string, boardId stri
 	if err != nil {
 		return nil, err
 	}
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
 	return panel, nil
 }
 
@@ -96,6 +100,11 @@ func (c *Controller) UpdatePanelById(ctx context.Context, boardId string, panelI
 		return err
 	}
 
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -116,6 +125,12 @@ func (c *Controller) DeletePanelById(ctx context.Context, boardId string, panelI
 	if err != nil {
 		return err
 	}
+
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

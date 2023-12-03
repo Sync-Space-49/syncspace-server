@@ -19,7 +19,7 @@ func (c *Controller) GetStacksByPanelId(ctx context.Context, panelId string) (*[
 	return &stacks, nil
 }
 
-func (c *Controller) CreateStack(ctx context.Context, title string, panelId string) (*models.Stack, error) {
+func (c *Controller) CreateStack(ctx context.Context, title string, boardId string, panelId string) (*models.Stack, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Stacks where panel_id=$1;
@@ -38,6 +38,12 @@ func (c *Controller) CreateStack(ctx context.Context, title string, panelId stri
 	if err != nil {
 		return nil, err
 	}
+
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+
 	return stack, nil
 }
 
@@ -52,7 +58,7 @@ func (c *Controller) GetStackById(ctx context.Context, stackId string) (*models.
 	return &stack, nil
 }
 
-func (c *Controller) UpdateStackById(ctx context.Context, panelId string, stackId string, title string, position *int) error {
+func (c *Controller) UpdateStackById(ctx context.Context, boardId string, panelId string, stackId string, title string, position *int) error {
 	stack, err := c.GetStackById(ctx, stackId)
 	if err != nil {
 		return err
@@ -96,10 +102,15 @@ func (c *Controller) UpdateStackById(ctx context.Context, panelId string, stackI
 		return err
 	}
 
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (c *Controller) DeleteStackById(ctx context.Context, panelId string, stackId string) error {
+func (c *Controller) DeleteStackById(ctx context.Context, boardId string, panelId string, stackId string) error {
 	stack, err := c.GetStackById(ctx, stackId)
 	if err != nil {
 		return err
@@ -116,6 +127,12 @@ func (c *Controller) DeleteStackById(ctx context.Context, panelId string, stackI
 	if err != nil {
 		return err
 	}
+
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

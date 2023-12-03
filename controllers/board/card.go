@@ -21,7 +21,7 @@ func (c *Controller) GetCardsByStackId(ctx context.Context, stackId string) (*[]
 	return &cards, nil
 }
 
-func (c *Controller) CreateCard(ctx context.Context, title string, description string, points string, stackId string) (*models.Card, error) {
+func (c *Controller) CreateCard(ctx context.Context, title string, description string, points string, boardId string, stackId string) (*models.Card, error) {
 	var nextPosition int
 	err := c.db.DB.GetContext(ctx, &nextPosition, `
 		SELECT COALESCE(MAX(position)+1, 0) AS next_position FROM Cards where stack_id=$1;
@@ -40,6 +40,12 @@ func (c *Controller) CreateCard(ctx context.Context, title string, description s
 	if err != nil {
 		return nil, err
 	}
+
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+
 	return card, nil
 }
 
@@ -132,10 +138,15 @@ func (c *Controller) UpdateCardById(ctx context.Context, boardId string, stackId
 		return err
 	}
 
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (c *Controller) DeleteCardById(ctx context.Context, stackId string, cardId string) error {
+func (c *Controller) DeleteCardById(ctx context.Context, boardId string, stackId string, cardId string) error {
 	card, err := c.GetCardById(ctx, cardId)
 	if err != nil {
 		return err
@@ -152,26 +163,44 @@ func (c *Controller) DeleteCardById(ctx context.Context, stackId string, cardId 
 	if err != nil {
 		return err
 	}
+
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (c *Controller) AssignCardToUser(ctx context.Context, cardId string, userId string) error {
+func (c *Controller) AssignCardToUser(ctx context.Context, boardId string, cardId string, userId string) error {
 	_, err := c.db.DB.ExecContext(ctx, `
 		INSERT INTO assigned_cards (user_id, card_id) VALUES ($1, $2);
 	`, userId, cardId)
 	if err != nil {
 		return err
 	}
+
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (c *Controller) UnassignCardFromUser(ctx context.Context, cardId string, userId string) error {
+func (c *Controller) UnassignCardFromUser(ctx context.Context, boardId string, cardId string, userId string) error {
 	_, err := c.db.DB.ExecContext(ctx, `
 		DELETE FROM assigned_cards WHERE user_id=$1 AND card_id=$2;
 	`, userId, cardId)
 	if err != nil {
 		return err
 	}
+
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -183,10 +212,11 @@ func (c *Controller) GetAssignedUsersByCardId(ctx context.Context, cardId string
 	if err != nil {
 		return nil, err
 	}
+
 	return &userIds, nil
 }
 
-func (c *Controller) GetAssignedCardsByUserId(ctx context.Context, userId string) (*[]string, error) {
+func (c *Controller) GetAssignedCardsByUserId(ctx context.Context, boardId string, userId string) (*[]string, error) {
 	var cardIds []string
 	err := c.db.DB.SelectContext(ctx, &cardIds, `
 		SELECT card_id FROM assigned_cards WHERE user_id=$1;
@@ -194,6 +224,12 @@ func (c *Controller) GetAssignedCardsByUserId(ctx context.Context, userId string
 	if err != nil {
 		return nil, err
 	}
+
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+
 	return &cardIds, nil
 }
 
@@ -258,5 +294,11 @@ func (c *Controller) CreateCardWithAI(ctx context.Context, panelId string) (*mod
 	// 	return nil, err
 	// }
 	// return card, nil
+
+	// err = c.UpdateBoardModifiedAt(ctx, boardId)
+	// if err != nil {
+	// 	return err
+	// }
+
 	return nil, nil
 }
