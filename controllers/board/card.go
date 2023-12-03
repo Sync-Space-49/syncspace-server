@@ -177,7 +177,7 @@ func (c *Controller) DeleteCardById(ctx context.Context, boardId string, stackId
 }
 
 func (c *Controller) CreateCardWithAI(ctx context.Context, boardId string, cardStackId string) (*models.Card, error) {
-	requestUrl := fmt.Sprintf("http://%s/api/generate/board", c.cfg.AI.APIHost)
+	requestUrl := fmt.Sprintf("http://%s/api/generate/card", c.cfg.AI.APIHost)
 
 	detailedBoard, err := c.GetCompleteBoardById(ctx, boardId)
 	if err != nil {

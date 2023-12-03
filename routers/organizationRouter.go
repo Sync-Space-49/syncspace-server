@@ -118,7 +118,6 @@ func (handler *organizationHandler) UpdateOrganization(writer http.ResponseWrite
 		aiEnabledString = "false"
 	}
 	aiEnabled, err := strconv.ParseBool(aiEnabledString)
-	print(aiEnabled)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to parse aiEnabledString: %s", err.Error()), http.StatusBadRequest)
 		return
