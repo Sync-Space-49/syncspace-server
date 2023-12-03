@@ -48,7 +48,7 @@ func (handler *organizationHandler) CreateOrganization(writer http.ResponseWrite
 		return
 	}
 	// addition of aiEnabledString variable allows for us to default to 'false' if '' is passed
-	aiEnabledString := request.FormValue("aiEnabled")
+	aiEnabledString := request.FormValue("ai_enabled")
 	if aiEnabledString == "" {
 		aiEnabledString = "false"
 	}
