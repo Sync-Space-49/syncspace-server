@@ -276,6 +276,10 @@ func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId 
 	if err != nil {
 		return err
 	}
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -304,7 +308,7 @@ func (c *Controller) GetMembersByBoardId(boardId string) (*[]models.User, error)
 	return members, nil
 }
 
-func (c *Controller) AddMemberToBoard(userId string, orgId string, boardId string) error {
+func (c *Controller) AddMemberToBoard(ctx context.Context, userId string, orgId string, boardId string) error {
 	boardMemberRoleName := fmt.Sprintf("org%s:board%s:member", orgId, boardId)
 	// fmt.Printf("org%s:board%s:owner", orgId, boardId)
 	boardMemberRoles, err := auth.GetRoles(&boardMemberRoleName)
@@ -315,10 +319,14 @@ func (c *Controller) AddMemberToBoard(userId string, orgId string, boardId strin
 	if err != nil {
 		return err
 	}
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId string) error {
+func (c *Controller) RemoveMemberFromBoard(ctx context.Context, userId string, orgId string, boardId string) error {
 	boardRolePrefix := fmt.Sprintf("org%s:board%s:", orgId, boardId)
 	boardRoles, err := auth.GetRoles(&boardRolePrefix)
 	// fmt.Printf("boardRoles %s", boardRoles)
@@ -333,6 +341,10 @@ func (c *Controller) RemoveMemberFromBoard(userId string, orgId string, boardId 
 		boardRoleIds = append(boardRoleIds, role.Id)
 	}
 	err = auth.RemoveUserFromRoles(userId, boardRoleIds)
+	if err != nil {
+		return err
+	}
+	err = c.UpdateBoardModifiedAt(ctx, boardId)
 	if err != nil {
 		return err
 	}
@@ -397,13 +409,13 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 			return nil, err
 		}
 		panelId := newPanel.Id.String()
-		newStack, err := c.CreateStack(ctx, "To-Do", panelId)
+		newStack, err := c.CreateStack(ctx, "To-Do", boardId, panelId)
 		if err != nil {
 			return nil, err
 		}
 		for _, task := range tasks {
 			CardStoryPointsString := fmt.Sprintf("%v", task.CardStoryPoints)
-			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, CardStoryPointsString, newStack.Id.String())
+			_, err := c.CreateCard(ctx, task.CardTitle, task.CardDesc, CardStoryPointsString, boardId, newStack.Id.String())
 			if err != nil {
 				return nil, err
 			}
@@ -423,4 +435,15 @@ func (c *Controller) CanUseAIForBoardCreation(ctx context.Context, orgId string)
 		return false, err
 	}
 	return ai_enabled, nil
+}
+
+func (c *Controller) UpdateBoardModifiedAt(ctx context.Context, boardId string) error {
+	modified_at := time.Now().UTC()
+	_, err := c.db.DB.ExecContext(ctx, `
+		UPDATE Boards SET modified_at=$1 WHERE id=$2;
+	`, modified_at, boardId)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -384,7 +384,8 @@ func (handler *boardHandler) AddMemberToBoard(writer http.ResponseWriter, reques
 		return
 	}
 
-	err := handler.controller.AddMemberToBoard(memberId, organizationId, boardId)
+	ctx := request.Context()
+	err := handler.controller.AddMemberToBoard(ctx, memberId, organizationId, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get users in board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
 		return
@@ -410,7 +411,8 @@ func (handler *boardHandler) RemoveMemberFromBoard(writer http.ResponseWriter, r
 		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add users to org %s board with id %s", userId, organizationId, boardId), http.StatusForbidden)
 		return
 	}
-	err := handler.controller.RemoveMemberFromBoard(memberId, organizationId, boardId)
+	ctx := request.Context()
+	err := handler.controller.RemoveMemberFromBoard(ctx, memberId, organizationId, boardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to get users in board with id %s: %s", boardId, err.Error()), http.StatusInternalServerError)
 		return
@@ -750,7 +752,7 @@ func (handler *boardHandler) CreateStack(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	stack, err := handler.controller.CreateStack(request.Context(), title, panelId)
+	stack, err := handler.controller.CreateStack(request.Context(), title, boardId, panelId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create stack: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -845,7 +847,7 @@ func (handler *boardHandler) UpdateStack(writer http.ResponseWriter, request *ht
 	}
 
 	ctx := request.Context()
-	err := handler.controller.UpdateStackById(ctx, panelId, stackId, title, position)
+	err := handler.controller.UpdateStackById(ctx, boardId, panelId, stackId, title, position)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update stack with id %s: %s", stackId, err.Error()), http.StatusInternalServerError)
 		return
@@ -874,7 +876,7 @@ func (handler *boardHandler) DeleteStack(writer http.ResponseWriter, request *ht
 	}
 
 	ctx := request.Context()
-	err := handler.controller.DeleteStackById(ctx, panelId, stackId)
+	err := handler.controller.DeleteStackById(ctx, boardId, panelId, stackId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to delete stack with id %s: %s", stackId, err.Error()), http.StatusInternalServerError)
 		return
@@ -1012,7 +1014,7 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	card, err := handler.controller.CreateCard(request.Context(), title, description, points, stackId)
+	card, err := handler.controller.CreateCard(request.Context(), title, description, points, boardId, stackId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -1139,7 +1141,7 @@ func (handler *boardHandler) DeleteCard(writer http.ResponseWriter, request *htt
 	}
 
 	ctx := request.Context()
-	err := handler.controller.DeleteCardById(ctx, stackId, cardId)
+	err := handler.controller.DeleteCardById(ctx, boardId, stackId, cardId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to delete card with id %s: %s", cardId, err.Error()), http.StatusInternalServerError)
 		return
@@ -1237,7 +1239,7 @@ func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, reques
 	}
 
 	ctx := request.Context()
-	err := handler.controller.AssignCardToUser(ctx, cardId, memberId)
+	err := handler.controller.AssignCardToUser(ctx, boardId, cardId, memberId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to assign card with id %s to user with id %s: %s", cardId, memberId, err.Error()), http.StatusInternalServerError)
 		return
@@ -1268,7 +1270,7 @@ func (handler *boardHandler) UnassignCardFromUser(writer http.ResponseWriter, re
 	}
 
 	ctx := request.Context()
-	err := handler.controller.UnassignCardFromUser(ctx, cardId, memberId)
+	err := handler.controller.UnassignCardFromUser(ctx, boardId, cardId, memberId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to unassign card with id %s to user with id %s: %s", cardId, memberId, err.Error()), http.StatusInternalServerError)
 		return
