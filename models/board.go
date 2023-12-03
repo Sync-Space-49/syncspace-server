@@ -43,6 +43,7 @@ type Board struct {
 	Id             uuid.UUID `db:"id" json:"id"`
 	OwnerId        string    `db:"owner_id" json:"owner_id"`
 	Title          string    `db:"title" json:"title"`
+	Description    string    `db:"description" json:"description"`
 	CreatedAt      string    `db:"created_at" json:"created_at"`
 	ModifiedAt     string    `db:"modified_at" json:"modified_at"`
 	IsPrivate      bool      `db:"is_private" json:"is_private"`
@@ -66,13 +67,14 @@ type CompletePanel struct {
 }
 
 type CompleteBoard struct {
-	Id         uuid.UUID       `db:"id" json:"id"`
-	OwnerId    string          `db:"owner_id" json:"owner_id"`
-	Title      string          `db:"title" json:"title"`
-	CreatedAt  string          `db:"created_at" json:"created_at"`
-	ModifiedAt string          `db:"modified_at" json:"modified_at"`
-	IsPrivate  bool            `db:"is_private" json:"is_private"`
-	Panels     []CompletePanel `json:"panels"`
+	Id          uuid.UUID       `db:"id" json:"id"`
+	OwnerId     string          `db:"owner_id" json:"owner_id"`
+	Title       string          `db:"title" json:"title"`
+	Description string          `db:"description" json:"description"`
+	CreatedAt   string          `db:"created_at" json:"created_at"`
+	ModifiedAt  string          `db:"modified_at" json:"modified_at"`
+	IsPrivate   bool            `db:"is_private" json:"is_private"`
+	Panels      []CompletePanel `json:"panels"`
 }
 
 type CompleteCard struct {
@@ -86,10 +88,26 @@ type CompleteCard struct {
 }
 
 type AIGeneratedCard struct {
-	AssignedUsers   []string    `json:"assigned"`
 	CardTitle       string      `json:"title"`
 	CardDesc        string      `json:"description"`
 	CardStoryPoints interface{} `json:"story_points"`
 }
 
 type AIGeneratedSprint map[string][]AIGeneratedCard
+
+type SimplifiedCompleteBoard struct {
+	Title       string                    `json:"title"`
+	Description string                    `json:"description"`
+	Panels      []SimplifiedCompletePanel `json:"panels"`
+}
+
+type SimplifiedCompletePanel struct {
+	Title  string                    `json:"title"`
+	Stacks []SimplifiedCompleteStack `json:"stacks"`
+}
+
+type SimplifiedCompleteStack struct {
+	Id    uuid.UUID         `db:"id" json:"id"`
+	Title string            `json:"title"`
+	Cards []AIGeneratedCard `json:"cards"`
+}

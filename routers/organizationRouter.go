@@ -113,11 +113,12 @@ func (handler *organizationHandler) UpdateOrganization(writer http.ResponseWrite
 	title := request.FormValue("title")
 	description := request.FormValue("description")
 	// addition of aiEnabledString variable allows for us to default to 'false' if '' is passed
-	aiEnabledString := request.FormValue("aiEnabled")
+	aiEnabledString := request.FormValue("ai_enabled")
 	if aiEnabledString == "" {
 		aiEnabledString = "false"
 	}
 	aiEnabled, err := strconv.ParseBool(aiEnabledString)
+	print(aiEnabled)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to parse aiEnabledString: %s", err.Error()), http.StatusBadRequest)
 		return

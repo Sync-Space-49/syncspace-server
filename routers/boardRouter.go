@@ -45,6 +45,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 
 	handler.router.Handle(boardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllBoards))).Methods("GET")
 	handler.router.Handle(boardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoard))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/ai", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoardWithAI))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetBoard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateBoard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{boardId}", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteBoard))).Methods("DELETE")
@@ -71,6 +72,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.GetCards))).Methods("GET")
 	handler.router.Handle(cardsPrefix, auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCard))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/ai", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateCardWithAI))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE")
@@ -78,8 +80,6 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllAssignedUsers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AssignCardToUser))).Methods("POST")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UnassignCardFromUser))).Methods("DELETE")
-
-	handler.router.Handle(fmt.Sprintf("%s/ai", boardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.CreateBoardWithAI))).Methods("POST")
 
 	return handler.router
 }
@@ -122,7 +122,8 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
 	}
-	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
+	description := request.FormValue("description")
+	isPrivate, err := strconv.ParseBool(request.FormValue("is_private"))
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
 		return
@@ -140,7 +141,7 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 		return
 	}
 	ctx := request.Context()
-	board, err := handler.controller.CreateBoard(ctx, userId, title, isPrivate, orgId)
+	board, err := handler.controller.CreateBoard(ctx, userId, title, description, isPrivate, orgId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to create board: %s", err.Error()), http.StatusInternalServerError)
 		return
@@ -206,7 +207,8 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 
 	title := request.FormValue("title")
 	ownerId := request.FormValue("ownerId")
-	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
+	description := request.FormValue("description")
+	isPrivate, err := strconv.ParseBool(request.FormValue("is_private"))
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
 		return
@@ -231,7 +233,7 @@ func (handler *boardHandler) UpdateBoard(writer http.ResponseWriter, request *ht
 	}
 
 	ctx := request.Context()
-	err = handler.controller.UpdateBoardById(ctx, organizationId, boardId, title, isPrivate, ownerId, userId)
+	err = handler.controller.UpdateBoardById(ctx, organizationId, boardId, title, description, isPrivate, ownerId, userId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to update board with id %s: %s", organizationId, err.Error()), http.StatusInternalServerError)
 		return
@@ -1024,6 +1026,33 @@ func (handler *boardHandler) CreateCard(writer http.ResponseWriter, request *htt
 	json.NewEncoder(writer).Encode(card)
 }
 
+func (handler *boardHandler) CreateCardWithAI(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	stackId := params["stackId"]
+
+	aiEnabled, err := handler.controller.CanUseAI(request.Context(), organizationId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to check if AI is enabled: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !aiEnabled {
+		http.Error(writer, fmt.Sprintf("AI is not enabled for organization with id %s", organizationId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	card, err := handler.controller.CreateCardWithAI(ctx, boardId, stackId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to create card: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(card)
+}
+
 func (handler *boardHandler) GetCard(writer http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	organizationId := params["organizationId"]
@@ -1285,22 +1314,22 @@ func (handler *boardHandler) CreateBoardWithAI(writer http.ResponseWriter, reque
 	title := request.FormValue("title")
 	description := request.FormValue("description")
 
-	detailLevel := request.FormValue("detailLevel")
-	storyPointType := request.FormValue("storyPointType")
-	storyPointExamples := request.FormValue("storyPointExamples")
+	detailLevel := request.FormValue("detail_level")
+	storyPointType := request.FormValue("story_point_type")
+	storyPointExamples := request.FormValue("story_point_examples")
 
 	if title == "" {
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
 	}
-	isPrivate, err := strconv.ParseBool(request.FormValue("isPrivate"))
+	isPrivate, err := strconv.ParseBool(request.FormValue("is_private"))
 	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
+		http.Error(writer, fmt.Sprintf("Failed to parse is_private: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
 
 	// Check if AI is enabled
-	aiEnabled, err := handler.controller.CanUseAIForBoardCreation(request.Context(), organizationId)
+	aiEnabled, err := handler.controller.CanUseAI(request.Context(), organizationId)
 	if err != nil {
 		http.Error(writer, fmt.Sprintf("Failed to check if AI is enabled: %s", err.Error()), http.StatusInternalServerError)
 		return

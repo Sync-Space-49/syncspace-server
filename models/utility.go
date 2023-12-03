@@ -39,3 +39,41 @@ func CopyToCompleteCard(source Card) CompleteCard {
 	dest.StackId = source.StackId
 	return dest
 }
+
+func CopyToSimplifiedCompleteBoard(source CompleteBoard) SimplifiedCompleteBoard {
+	dest := SimplifiedCompleteBoard{}
+	dest.Title = source.Title
+	dest.Description = source.Description
+	dest.Panels = make([]SimplifiedCompletePanel, len(source.Panels))
+	for i, panel := range source.Panels {
+		dest.Panels[i] = CopyToSimplifiedCompletePanel(panel)
+	}
+	return dest
+}
+
+func CopyToSimplifiedCompletePanel(source CompletePanel) SimplifiedCompletePanel {
+	dest := SimplifiedCompletePanel{}
+	dest.Title = source.Title
+	dest.Stacks = make([]SimplifiedCompleteStack, len(source.Stacks))
+	for i, stack := range source.Stacks {
+		dest.Stacks[i] = CopyToSimplifiedCompleteStack(stack)
+	}
+	return dest
+}
+
+func CopyToSimplifiedCompleteStack(source CompleteStack) SimplifiedCompleteStack {
+	dest := SimplifiedCompleteStack{}
+	dest.Cards = make([]AIGeneratedCard, len(source.Cards))
+	for i, card := range source.Cards {
+		dest.Cards[i] = CopyToAIGeneratedCard(card)
+	}
+	return dest
+}
+
+func CopyToAIGeneratedCard(source CompleteCard) AIGeneratedCard {
+	dest := AIGeneratedCard{}
+	dest.CardTitle = source.Title
+	dest.CardDesc = source.Description
+	dest.CardStoryPoints = source.Points
+	return dest
+}
