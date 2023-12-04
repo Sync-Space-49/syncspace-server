@@ -123,10 +123,16 @@ func (handler *boardHandler) CreateBoard(writer http.ResponseWriter, request *ht
 		return
 	}
 	description := request.FormValue("description")
-	isPrivate, err := strconv.ParseBool(request.FormValue("is_private"))
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
-		return
+
+	isPrivateString := request.FormValue("is_private")
+	isPrivate := false
+	var err error
+	if isPrivateString != "" {
+		isPrivate, err = strconv.ParseBool(request.FormValue("is_private"))
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
+			return
+		}
 	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
@@ -1321,10 +1327,16 @@ func (handler *boardHandler) CreateBoardWithAI(writer http.ResponseWriter, reque
 		http.Error(writer, "No Title Found", http.StatusBadRequest)
 		return
 	}
-	isPrivate, err := strconv.ParseBool(request.FormValue("is_private"))
-	if err != nil {
-		http.Error(writer, fmt.Sprintf("Failed to parse is_private: %s", err.Error()), http.StatusBadRequest)
-		return
+
+	isPrivateString := request.FormValue("is_private")
+	isPrivate := false
+	var err error
+	if isPrivateString != "" {
+		isPrivate, err = strconv.ParseBool(request.FormValue("is_private"))
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Failed to parse isPrivate: %s", err.Error()), http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Check if AI is enabled
