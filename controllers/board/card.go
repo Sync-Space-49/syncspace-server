@@ -1,9 +1,13 @@
 package board
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 
 	"github.com/Sync-Space-49/syncspace-server/models"
@@ -172,6 +176,61 @@ func (c *Controller) DeleteCardById(ctx context.Context, boardId string, stackId
 	return nil
 }
 
+func (c *Controller) CreateCardWithAI(ctx context.Context, boardId string, cardStackId string) (*models.Card, error) {
+	requestUrl := fmt.Sprintf("http://%s/api/generate/card", c.cfg.AI.APIHost)
+
+	detailedBoard, err := c.GetCompleteBoardById(ctx, boardId)
+	if err != nil {
+		return nil, err
+	}
+	formattedBoard := models.CopyToSimplifiedCompleteBoard(*detailedBoard)
+
+	type AICardPayload struct {
+		StackId string                         `json:"stack_id"`
+		Board   models.SimplifiedCompleteBoard `json:"board"`
+	}
+	aiCardPayload := AICardPayload{
+		StackId: cardStackId,
+		Board:   formattedBoard,
+	}
+
+	var payload bytes.Buffer
+	err = json.NewEncoder(&payload).Encode(aiCardPayload)
+	if err != nil {
+		return nil, err
+	}
+
+	method := "POST"
+	req, err := http.NewRequest(method, requestUrl, &payload)
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Fatalf("Error occurred during conversion of HTTP resonse body into bytes. %v", err)
+		return nil, err
+	}
+
+	var aiCard models.AIGeneratedCard
+	err = json.Unmarshal(body, &aiCard)
+	if err != nil {
+		return nil, err
+	}
+	CardStoryPointsString := fmt.Sprintf("%v", aiCard.CardStoryPoints)
+	card, err := c.CreateCard(ctx, aiCard.CardTitle, aiCard.CardDesc, CardStoryPointsString, boardId, cardStackId)
+	if err != nil {
+		return nil, err
+	}
+	return card, nil
+}
+
 func (c *Controller) AssignCardToUser(ctx context.Context, boardId string, cardId string, userId string) error {
 	_, err := c.db.DB.ExecContext(ctx, `
 		INSERT INTO assigned_cards (user_id, card_id) VALUES ($1, $2);
@@ -266,39 +325,4 @@ func (c *Controller) GetCompleteCardById(ctx context.Context, cardId string) (*m
 	}
 
 	return &completeCard, nil
-}
-
-func (c *Controller) CreateCardWithAI(ctx context.Context, panelId string) (*models.Card, error) {
-
-	requestUrl := fmt.Sprintf("%s/ai/generate/card", c.cfg.AI.APIHost)
-	res, err := http.Get(requestUrl)
-	if err != nil {
-		fmt.Printf("error making http request: %s\n", err)
-	}
-	// json.Marshal(res)
-	// This prints the AI generated card JSON
-	fmt.Print(res)
-
-	// cardId := uuid.New().String()
-	// // title, description, panelId,
-	// // stackId = "AI Generated Cards"
-
-	// _, err := c.db.DB.ExecContext(ctx, `
-	// 	INSERT INTO Cards (id, title, description, stack_id) VALUES ($1, $2, $3, $4);
-	// `, cardId, title, description, panelId)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// card, err := c.GetCardById(ctx, cardId)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// return card, nil
-
-	// err = c.UpdateBoardModifiedAt(ctx, boardId)
-	// if err != nil {
-	// 	return err
-	// }
-
-	return nil, nil
 }

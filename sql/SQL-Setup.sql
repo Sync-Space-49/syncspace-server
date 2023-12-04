@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS Organizations (
 CREATE TABLE IF NOT EXISTS Boards (
     id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title           VARCHAR(255) NOT NULL,
+    description     TEXT DEFAULT '',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     modified_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     is_private      BOOLEAN DEFAULT FALSE,                  -- defaults to public

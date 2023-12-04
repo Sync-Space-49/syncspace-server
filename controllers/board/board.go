@@ -113,10 +113,10 @@ func (c *Controller) GetCompleteBoardById(ctx context.Context, boardId string) (
 	return &completeBoard, nil
 }
 
-func (c *Controller) CreateBoard(ctx context.Context, userId string, name string, isPrivate bool, orgId string) (*models.Board, error) {
-	query := `INSERT INTO Boards (id, title, is_private, organization_id, owner_id) VALUES ($1, $2, $3, $4, $5);`
+func (c *Controller) CreateBoard(ctx context.Context, userId string, name string, description string, isPrivate bool, orgId string) (*models.Board, error) {
+	query := `INSERT INTO Boards (id, title, description, is_private, organization_id, owner_id) VALUES ($1, $2, $3, $4, $5, $6);`
 	boardId := uuid.New().String()
-	_, err := c.db.DB.ExecContext(ctx, query, boardId, name, isPrivate, orgId, userId)
+	_, err := c.db.DB.ExecContext(ctx, query, boardId, name, description, isPrivate, orgId, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (c *Controller) InitializeBoard(ownerId string, boardId string, orgId strin
 	return nil
 }
 
-func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId string, title string, isPrivate bool, ownerId string, previousOwnerId string) error {
+func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId string, title string, description string, isPrivate bool, ownerId string, previousOwnerId string) error {
 	board, err := c.GetBoardById(ctx, boardId)
 	if err != nil {
 		return err
@@ -245,14 +245,17 @@ func (c *Controller) UpdateBoardById(ctx context.Context, orgId string, boardId 
 	if title == "" {
 		title = board.Title
 	}
+	if description == "" {
+		description = board.Description
+	}
 	if ownerId == "" {
 		ownerId = board.OwnerId
 		// fmt.Printf("2 ownerId: %s", ownerId)
 	}
 	modified_at := time.Now().UTC()
 	_, err = c.db.DB.ExecContext(ctx, `
-		UPDATE Boards SET title=$1, is_private=$2, owner_id=$3, modified_at=$4 WHERE id=$5;
-	`, title, isPrivate, ownerId, modified_at, boardId)
+		UPDATE Boards SET title=$1, description=$2, is_private=$3, owner_id=$4, modified_at=$5 WHERE id=$6;
+	`, title, description, isPrivate, ownerId, modified_at, boardId)
 	if err != nil {
 		return err
 	}
@@ -391,13 +394,13 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 		return nil, err
 	}
 
-	var sprints map[string][]models.AIGeneratedCard
+	var sprints models.AIGeneratedSprint
 	err = json.Unmarshal(data, &sprints)
 	if err != nil {
 		log.Fatalf("Error occurred during unmarshalling. %v", err)
 		return nil, err
 	}
-	newBoard, err := c.CreateBoard(ctx, userId, name, isPrivate, orgId)
+	newBoard, err := c.CreateBoard(ctx, userId, name, description, isPrivate, orgId)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +428,7 @@ func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name 
 	return newBoard, nil
 }
 
-func (c *Controller) CanUseAIForBoardCreation(ctx context.Context, orgId string) (bool, error) {
+func (c *Controller) CanUseAI(ctx context.Context, orgId string) (bool, error) {
 	var ai_enabled bool
 
 	err := c.db.DB.GetContext(ctx, &ai_enabled, `
