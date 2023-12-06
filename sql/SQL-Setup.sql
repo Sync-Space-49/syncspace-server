@@ -66,3 +66,9 @@ CREATE TABLE IF NOT EXISTS Card_Tags (
     tag_id          UUID, FOREIGN KEY (tag_id) REFERENCES Tags(id),
     card_id         UUID, FOREIGN KEY (card_id) REFERENCES Cards(id)
 );
+
+CREATE TABLE IF NOT EXISTS favorite_boards (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id varchar(64) NOT NULL,
+    board_id varchar(64) NOT NULL
+);
