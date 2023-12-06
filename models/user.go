@@ -1,5 +1,7 @@
 package models
 
+import "github.com/google/uuid"
+
 type Identity struct {
 	Connection string `json:"connection"`
 	UserID     string `json:"user_id"`
@@ -29,4 +31,10 @@ type User struct {
 	Blocked       bool       `json:"blocked"`
 	GivenName     string     `json:"given_name"`
 	FamilyName    string     `json:"family_name"`
+}
+
+type FavoriteBoards struct {
+	ID      uuid.UUID `db:"id" json:"id"`
+	UserID  string    `db:"user_id" json:"user_id"`
+	BoardID uuid.UUID `db:"board_id" json:"board_id"`
 }

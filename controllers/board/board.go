@@ -450,38 +450,3 @@ func (c *Controller) UpdateBoardModifiedAt(ctx context.Context, boardId string) 
 	}
 	return nil
 }
-
-func (c *Controller) GetFavouriteBoards(ctx context.Context, userId string) (*[]models.Board, error) {
-	var favouriteBoards []models.Board
-	//  This Join will return board objects that are favorited by the user with the given userId
-	err := c.db.DB.SelectContext(ctx, &favouriteBoards, `
-		SELECT b.*
-		FROM favorite_boards AS fb
-		JOIN boards AS b ON fb.board_id = b.id
-		WHERE fb.user_id = $1;
-	`, userId)
-	if err != nil {
-		return nil, err
-	}
-	return &favouriteBoards, nil
-}
-
-func (c *Controller) AddFavouriteBoard(ctx context.Context, userId string, boardId string) error {
-	_, err := c.db.DB.ExecContext(ctx, `
-		INSERT INTO favorite_boards (user_id, board_id) VALUES ($1, $2);
-	`, userId, boardId)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Controller) RemoveFavouriteBoard(ctx context.Context, userId string, boardId string) error {
-	_, err := c.db.DB.ExecContext(ctx, `
-		DELETE FROM favorite_boards WHERE user_id=$1 AND board_id=$2;
-	`, userId, boardId)
-	if err != nil {
-		return err
-	}
-	return nil
-}
