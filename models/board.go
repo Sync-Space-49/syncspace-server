@@ -111,3 +111,9 @@ type SimplifiedCompleteStack struct {
 	Title string            `json:"title"`
 	Cards []AIGeneratedCard `json:"cards"`
 }
+
+type FavoriteBoards struct {
+	ID      uuid.UUID `db:"id" json:"id"`
+	UserID  string    `db:"user_id" json:"user_id"`
+	BoardID uuid.UUID `db:"board_id" json:"board_id"`
+}
