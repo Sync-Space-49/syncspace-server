@@ -3,6 +3,7 @@ package models
 func CopyToCompleteBoard(source Board) CompleteBoard {
 	dest := CompleteBoard{}
 	dest.Id = source.Id
+	dest.Description = source.Description
 	dest.Title = source.Title
 	dest.OwnerId = source.OwnerId
 	dest.CreatedAt = source.CreatedAt
