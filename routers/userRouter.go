@@ -41,6 +41,10 @@ func registerUserRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB)
 	handler.router.Handle(fmt.Sprintf("%s/{userId}/boards/owned", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserOwnerBoards))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{userId}/assigned", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserAssignedCards))).Methods("GET")
 
+	handler.router.Handle(fmt.Sprintf("%s/{userId}/boards/favourite", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetUserFavouriteBoards))).Methods("GET")
+	handler.router.Handle(fmt.Sprintf("%s/{userId}/boards/favourite/{boardId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AddUserFavouriteBoard))).Methods("POST")
+	handler.router.Handle(fmt.Sprintf("%s/{userId}/boards/favourite/{boardId}", usersPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.RemoveUserFavouriteBoard))).Methods("DELETE")
+
 	return handler.router
 }
 
@@ -274,4 +278,70 @@ func (handler *userHandler) GetUserAssignedCards(writer http.ResponseWriter, req
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	json.NewEncoder(writer).Encode(cards)
+}
+
+func (handler *userHandler) GetUserFavouriteBoards(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	userId := params["userId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	signedInUserId := token.RegisteredClaims.Subject
+	if signedInUserId != userId {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to get favourite boards for user with id %s", signedInUserId, userId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	boards, err := handler.controller.GetFavouriteBoards(ctx, userId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to get favourite boards for user with id %s: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(boards)
+}
+
+func (handler *userHandler) AddUserFavouriteBoard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	userId := params["userId"]
+	boardId := params["boardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	signedInUserId := token.RegisteredClaims.Subject
+	if signedInUserId != userId {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to add favourite board for user with id %s", signedInUserId, userId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err := handler.controller.AddFavouriteBoard(ctx, userId, boardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to add favourite board for user with id %s: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
+}
+
+func (handler *userHandler) RemoveUserFavouriteBoard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	userId := params["userId"]
+	boardId := params["boardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	signedInUserId := token.RegisteredClaims.Subject
+	if signedInUserId != userId {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to remove favourite board for user with id %s", signedInUserId, userId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	err := handler.controller.RemoveFavouriteBoard(ctx, userId, boardId)
+	if err != nil {
+		http.Error(writer, fmt.Sprintf("Failed to remove favourite board for user with id %s: %s", userId, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
 }
