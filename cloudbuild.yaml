@@ -1,0 +1,109 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '--build-arg'
+      - >-
+        APP_ENV=${_APP_ENV}
+      - '--build-arg'
+      - >-
+        API_HOST=${_API_HOST}
+      - '--build-arg'
+      - >-
+        DB_USER=${_DB_USER}
+      - '--build-arg'
+      - >-
+        DB_PASS=${_DB_PASS}
+      - '--build-arg'
+      - >-
+        DB_URI=${_DB_URI}
+      - '--build-arg'
+      - >-
+        DB_NAME=${_DB_NAME}
+      - '--build-arg'
+      - >-
+        AUTH0_DOMAIN=${_AUTH0_DOMAIN}
+      - '--build-arg'
+      - >-
+        AUTH0_FRONTEND_CLIENT_ID=${_AUTH0_FRONTEND_CLIENT_ID}
+      - '--build-arg'
+      - >-
+        AUTH0_FRONTEND_CLIENT_SECRET=${_AUTH0_FRONTEND_CLIENT_SECRET}
+      - '--build-arg'
+      - >-
+        AUTH0_SERVER_AUDIENCE=${_AUTH0_SERVER_AUDIENCE}
+      - '--build-arg'
+      - >-
+        AUTH0_SERVER_ID=${_AUTH0_SERVER_ID}
+      - '--build-arg'
+      - >-
+        AUTH0_SERVER_CLIENT_ID=${_AUTH0_SERVER_CLIENT_ID}
+      - '--build-arg'
+      - >-
+        AUTH0_SERVER_CLIENT_SECRET=${_AUTH0_SERVER_CLIENT_SECRET}
+      - '--build-arg'
+      - >-
+        AUTH0_MANAGEMENT_AUDIENCE=${_AUTH0_MANAGEMENT_AUDIENCE}
+      - '--build-arg'
+      - >-
+        AI_API_HOST=${_AI_API_HOST}
+      - '--build-arg'
+      - >-
+        WASABI_ACCESS_KEY=${_WASABI_ACCESS_KEY}
+      - '--build-arg'
+      - >-
+        WASABI_SECRET_KEY=${_WASABI_SECRET_KEY}
+      - '--build-arg'
+      - >-
+        WASABI_REGION=${_WASABI_REGION}
+      - '--build-arg'
+      - >-
+        WASABI_BUCKET=${_WASABI_BUCKET}
+      - '--build-arg'
+      - >-
+        WASABI_PFP_FILEPATH=${_WASABI_PFP_FILEPATH}
+      - '--no-cache'
+      - '-t'
+      - >-
+        $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+      - .
+      - '-f'
+      - Dockerfile
+    id: Build
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - >-
+        $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+    id: Push
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    args:
+      - run
+      - services
+      - update
+      - $_SERVICE_NAME
+      - '--platform=managed'
+      - >-
+        --image=$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+      - >-
+        --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID,gcb-trigger-id=$_TRIGGER_ID
+      - '--region=$_DEPLOY_REGION'
+      - '--quiet'
+    id: Deploy
+    entrypoint: gcloud
+images:
+  - >-
+    $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
+options:
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY
+substitutions:
+  _PLATFORM: managed
+  _SERVICE_NAME: syncspace-server
+  _TRIGGER_ID: 53c86674-1ca7-48ab-965a-6daeedb0c915
+  _DEPLOY_REGION: us-east1
+  _AR_HOSTNAME: us-east1-docker.pkg.dev
+tags:
+  - gcp-cloud-build-deploy-cloud-run
+  - gcp-cloud-build-deploy-cloud-run-managed
+  - syncspace-server
