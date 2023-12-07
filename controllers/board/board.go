@@ -355,7 +355,7 @@ func (c *Controller) RemoveMemberFromBoard(ctx context.Context, userId string, o
 }
 
 func (c *Controller) CreateBoardWithAI(ctx context.Context, userId string, name string, description string, isPrivate bool, orgId string, detailLevel string, storyPointType string, storyPointExamples string) (*models.Board, error) {
-	requestUrl := fmt.Sprintf("http://%s/api/generate/board", c.cfg.AI.APIHost)
+	requestUrl := fmt.Sprintf("%s/api/generate/board", c.cfg.AI.APIHost)
 	formData := url.Values{}
 	formData.Add("title", name)
 	formData.Add("description", description)
