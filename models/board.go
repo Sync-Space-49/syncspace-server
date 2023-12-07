@@ -111,3 +111,16 @@ type SimplifiedCompleteStack struct {
 	Title string            `json:"title"`
 	Cards []AIGeneratedCard `json:"cards"`
 }
+
+type DetailedAssignedCard struct {
+	UserID      string    `db:"user_id" json:"user_id"`
+	ID          uuid.UUID `db:"id" json:"id"`
+	Title       string    `db:"title" json:"title"`
+	Description string    `db:"description" json:"description"`
+	Position    int       `db:"position" json:"position"`
+	StackID     uuid.UUID `db:"stack_id" json:"stack_id"`
+	Points      string    `db:"points" json:"points"`
+	PanelID     uuid.UUID `db:"panel_id" json:"panel_id"`
+	BoardID     uuid.UUID `db:"board_id" json:"board_id"`
+	OrgID       uuid.UUID `db:"org_id" json:"org_id"`
+}

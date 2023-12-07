@@ -295,8 +295,8 @@ func (c *Controller) GetUserOwnedBoardsById(ctx context.Context, userId string) 
 	return &boards, nil
 }
 
-func (c *Controller) GetUserAssignedCardsById(ctx context.Context, userId string) (*[]models.Card, error) {
-	var cards []models.Card
+func (c *Controller) GetUserAssignedCardsById(ctx context.Context, userId string) (*[]models.DetailedAssignedCard, error) {
+	var cards []models.DetailedAssignedCard
 	err := c.db.DB.SelectContext(ctx, &cards, `
 	SELECT ac.user_id, c.*, s.id as stack_id, p.id as panel_id, b.id as board_id, o.id as org_id
 	FROM Assigned_Cards ac
