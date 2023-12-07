@@ -16,7 +16,7 @@ const (
 
 type Config struct {
 	Environment ENV    `default:"local" envconfig:"APP_ENV"`
-	APIHost     string `default:"127.0.0.1:8080" envconfig:"API_HOST"`
+	APIHost     string `default:"http://127.0.0.1:8080" envconfig:"API_HOST"`
 	JWTSecret   string `default:"bruh" envconfig:"JWT_SECRET"`
 	DB          struct {
 		DBUser string `default:"postgres" envconfig:"DB_USER"`
@@ -50,7 +50,7 @@ type Config struct {
 		}
 	}
 	AI struct {
-		APIHost string `default:"127.0.0.1:3999" envconfig:"AI_API_HOST"`
+		APIHost string `default:"http://127.0.0.1:3999" envconfig:"AI_API_HOST"`
 	}
 }
 
