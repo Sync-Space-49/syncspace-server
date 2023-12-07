@@ -20,7 +20,7 @@ func New(username, password, host, dbName string) (*DB, error) {
 		return nil, fmt.Errorf("[db.New] could not open connection to DB: %w", err)
 	}
 	// Test the connection
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	if err := conn.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("[db.New] could not complete initial DB ping: %w", err)

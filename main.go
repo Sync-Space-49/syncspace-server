@@ -34,7 +34,7 @@ func run() error {
 		Handler: routers.NewAPI(cfg, db),
 	}
 
-	fmt.Println("Running the server...")
+	fmt.Printf("Running the server on %s\n", cfg.APIHost)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed while running server: %w", err)
 	}
