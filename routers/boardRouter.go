@@ -76,6 +76,7 @@ func registerBoardRoutes(parentRouter *mux.Router, cfg *config.Config, db *db.DB
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCard))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.UpdateCard))).Methods("PUT")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.DeleteCard))).Methods("DELETE")
+	handler.router.Handle(fmt.Sprintf("%s/{cardId}/details", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetCompleteCard))).Methods("GET")
 
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.GetAllAssignedUsers))).Methods("GET")
 	handler.router.Handle(fmt.Sprintf("%s/{cardId}/assigned", cardsPrefix), auth.EnsureValidToken()(http.HandlerFunc(handler.AssignCardToUser))).Methods("POST")
@@ -1382,4 +1383,57 @@ func (handler *boardHandler) CreateBoardWithAI(writer http.ResponseWriter, reque
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
 	json.NewEncoder(writer).Encode(board)
+}
+
+func (handler *boardHandler) GetCompleteCard(writer http.ResponseWriter, request *http.Request) {
+	params := mux.Vars(request)
+	organizationId := params["organizationId"]
+	boardId := params["boardId"]
+	cardId := params["cardId"]
+
+	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
+	userId := token.RegisteredClaims.Subject
+	orgPrefix := fmt.Sprintf("org%s", organizationId)
+	readOrgPerm := fmt.Sprintf("%s:read", orgPrefix)
+	canReadOrg := tokenCustomClaims.HasPermission(readOrgPerm)
+	if !canReadOrg {
+		http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read organization with id: %s", userId, organizationId), http.StatusForbidden)
+		return
+	}
+
+	ctx := request.Context()
+	board, err := handler.controller.GetBoardById(ctx, boardId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No board found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get board: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if board.IsPrivate {
+		readBoardPerm := fmt.Sprintf("%s:board%s:read", orgPrefix, boardId)
+		boardsAdminPerm := fmt.Sprintf("%s:boards_admin", orgPrefix)
+		canReadBoard := tokenCustomClaims.HasAnyPermissions(readBoardPerm, boardsAdminPerm)
+		if !canReadBoard {
+			http.Error(writer, fmt.Sprintf("User with id %s does not have permission to read board with id: %s", userId, boardId), http.StatusForbidden)
+			return
+		}
+	}
+
+	stack, err := handler.controller.GetCompleteCardById(ctx, cardId)
+	if err != nil {
+		if err.Error() == sql.ErrNoRows.Error() {
+			http.Error(writer, fmt.Sprintf("No card found with id %s", boardId), http.StatusNotFound)
+		} else {
+			http.Error(writer, fmt.Sprintf("Failed to get card: %s", err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	json.NewEncoder(writer).Encode(stack)
 }
