@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Sync-Space-49/syncspace-server/controllers/user"
 	"github.com/Sync-Space-49/syncspace-server/models"
 	"github.com/google/uuid"
 )
@@ -156,17 +157,21 @@ func (c *Controller) GetCompletePanelById(ctx context.Context, panelId string) (
 			if len(*cards) > 0 {
 				for _, card := range *cards {
 					completeCard := models.CopyToCompleteCard(card)
-					completeCard.Assignments = make([]string, 0)
+					completeCard.Assignments = make([]models.User, 0)
 					assignments, err := c.GetAssignedUsersByCardId(ctx, card.Id.String())
 					if err != nil {
 						return nil, err
 					}
 					if len(*assignments) > 0 {
 						for _, assignment := range *assignments {
-							completeCard.Assignments = append(completeCard.Assignments, assignment)
+							assignedUser, err := user.GetUser(assignment)
+							if err != nil {
+								return nil, err
+							}
+							completeCard.Assignments = append(completeCard.Assignments, *assignedUser)
 						}
 					} else {
-						completeCard.Assignments = make([]string, 0)
+						completeCard.Assignments = make([]models.User, 0)
 					}
 					completeStack.Cards = append(completeStack.Cards, completeCard)
 				}

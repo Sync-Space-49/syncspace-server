@@ -84,7 +84,7 @@ type CompleteCard struct {
 	Points      string    `db:"points" json:"points"`
 	Position    int       `db:"position" json:"position"`
 	StackId     uuid.UUID `db:"stack_id" json:"stack_id"`
-	Assignments []string  `json:"assignments"`
+	Assignments []User    `json:"assignments"`
 }
 
 type AIGeneratedCard struct {
