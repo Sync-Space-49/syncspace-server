@@ -1,7 +1,11 @@
 # SyncSpace Server
 ## What Does it Do 🤔
-Syncspace backend is the REST API that handles all communication between the frontend and backend services. It handles all data storage and retrieval for the project. It also handles authentication and authorization for the project ultilizing JSON Web Tokens.
+Syncspace backend is the REST API that handles all communication between the frontend and backend services. It handles all data storage and retrieval for the project. It also handles authentication and authorization for the project ultilizing JSON Web Tokens. 
 
+### Where can I try it out? 
+This code is deployed on Google Cloud, accessible at the following link: https://syncspace-server-i6acbs4ioa-ue.a.run.app.
+
+The hosted version responds to the calls for the hosted [Web](https://github.com/Sync-Space-49/syncspace-web) and [Mobile](https://github.com/Sync-Space-49/syncspace-mobile) versions. This live instance also interacts with a personally hosted PostgreSQL database and a live instance of our [AI layer](https://github.com/Sync-Space-49/syncspace-ai). 
 
 ## 👩‍💻 Local Development
 ### Installation ⚒️
@@ -28,10 +32,3 @@ You can download the project's Go dependencies using the `go get` command. To ru
 ### Compiling 🏗️
 To compile the project to a binary executable, you can run `go build` in the root directory. This is useful for deploying the project but not usually needed for local development.
 
-
-### Tests 🧪
-TODO
-
-
-### Deployment 📦
-TODO
