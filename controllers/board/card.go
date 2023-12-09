@@ -157,6 +157,12 @@ func (c *Controller) DeleteCardById(ctx context.Context, boardId string, stackId
 		return err
 	}
 	_, err = c.db.DB.ExecContext(ctx, `
+		DELETE FROM assigned_cards WHERE card_id=$1;
+	`, cardId)
+	if err != nil {
+		return err
+	}
+	_, err = c.db.DB.ExecContext(ctx, `
 		DELETE FROM Cards WHERE id=$1;
 	`, cardId)
 	if err != nil {
