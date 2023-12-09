@@ -1266,6 +1266,10 @@ func (handler *boardHandler) AssignCardToUser(writer http.ResponseWriter, reques
 	cardId := params["cardId"]
 
 	memberId := request.FormValue("user_id")
+	if memberId == "" {
+		http.Error(writer, "No User Id Found", http.StatusBadRequest)
+		return
+	}
 
 	token := request.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
 	tokenCustomClaims := token.CustomClaims.(*auth.CustomClaims)
